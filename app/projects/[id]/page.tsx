@@ -1,15 +1,8 @@
 import Link from 'next/link';
-import { MapPin, Calendar } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight } from 'lucide-react';
 import ProjectGallery from '@/components/ProjectGallery';
 import ProjectCard from '@/components/ProjectCard';
 import { projects } from '@/data';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  residential: 'سكني',
-  commercial: 'تجاري',
-  industrial: 'صناعي',
-  government: 'حكومي',
-};
 
 interface ProjectDetailPageProps {
   params: Promise<{
@@ -51,61 +44,43 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   }
 
   const relatedProjects = projects
-    .filter((p) => p.category === project.category && p.id !== project.id)
+    .filter((p) => p.id !== project.id)
     .slice(0, 3);
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section with Main Image */}
-      <div className="relative w-full h-96 md:h-[500px] overflow-hidden">
-        <img
-          src={project.image}
-          alt={project.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div className="absolute inset-0 flex items-end">
-          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              {project.title}
-            </h1>
-            <div className="flex flex-wrap gap-6 text-white">
-              <div className="flex items-center gap-2">
-                <MapPin size={20} />
-                <span>{project.location}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar size={20} />
-                <span>{project.year}</span>
-              </div>
-              <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full font-medium">
-                {CATEGORY_LABELS[project.category]}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Project Details */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="py-12 md:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-16 mb-20">
             {/* Description */}
-            <div className="lg:col-span-2">
-              <h2 className="text-3xl font-bold text-foreground mb-6">نظرة عامة على المشروع</h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                {project.description}
-              </p>
+            <div className="lg:col-span-2 space-y-8">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">نظرة عامة على المشروع</h2>
+                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
+                  {project.description}
+                </p>
+              </div>
 
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-bold text-foreground mb-3 text-lg">أبرز المشروع</h3>
-                  <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                    <li>تصميم معماري وتخطيط متقدم</li>
-                    <li>ممارسات بناء مستدامة وطرق بناء صديقة للبيئة</li>
-                    <li>تقنيات بناء متقدمة وتكامل الأنظمة</li>
-                    <li>تم التسليم في الموعد المحدد وضمن الميزانية</li>
-                  </ul>
+              <div className="bg-secondary/50 rounded-xl p-6 md:p-8">
+                <h3 className="font-bold text-foreground mb-4 text-xl">أبرز المشروع</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                    <p className="text-muted-foreground">تصميم معماري وتخطيط متقدم</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                    <p className="text-muted-foreground">ممارسات بناء مستدامة</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                    <p className="text-muted-foreground">تقنيات بناء متقدمة</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                    <p className="text-muted-foreground">تسليم في الموعد المحدد</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -117,12 +92,6 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">اسم المشروع</p>
                   <p className="font-bold text-foreground">{project.title}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">الفئة</p>
-                  <p className="font-bold text-foreground">
-                    {CATEGORY_LABELS[project.category]}
-                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">الموقع</p>
@@ -137,8 +106,11 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </div>
 
           {/* Gallery Section */}
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold text-foreground mb-8">معرض صور المشروع</h2>
+          <div className="mb-20">
+            <div className="mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">معرض صور المشروع</h2>
+              <p className="text-muted-foreground text-lg">استكشف جمال وتفاصيل المشروع من خلال معرض الصور</p>
+            </div>
             <ProjectGallery images={project.gallery} title={project.title} />
           </div>
         </div>
@@ -146,13 +118,25 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
       {/* Related Projects */}
       {relatedProjects.length > 0 && (
-        <section className="py-16 md:py-24 bg-secondary">
+        <section className="py-12 md:py-20 bg-secondary">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-foreground mb-12">المشاريع ذات الصلة</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">مشاريع أخرى</h2>
+              <p className="text-muted-foreground text-lg">استكشف المزيد من مشاريعنا المتميزة</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
               {relatedProjects.map((relatedProject) => (
                 <ProjectCard key={relatedProject.id} project={relatedProject} />
               ))}
+            </div>
+            <div className="text-center mt-12">
+              <Link
+                href="/projects"
+                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors duration-300 shadow-md hover:shadow-lg"
+              >
+                عرض جميع المشاريع
+                <ArrowRight className="w-5 h-5 mr-2" />
+              </Link>
             </div>
           </div>
         </section>

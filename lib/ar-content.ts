@@ -14,34 +14,60 @@ export const ar = {
   // Company
   companyName: 'الصرح',
   companyDescription: 'نحن نقدم حلولاً معمارية مبتكرة وخدمات بناء مستدامة للمشاريع الحديثة',
-  companyDescriptionLong: 'نحن متخصصون في تقديم حلول معمارية مبتكرة وخدمات البناء المستدامة للمشاريع السكنية والتجارية والصناعية والحكومية بكفاءة واحترافية عالية.',
+  companyDescriptionLong: 'نقدم حلول بناء وتشطيب متكاملة من البداية حتى تسليم المشروع جاهز بالكامل.',
 
   // Home Page
-  heroTitle: 'ابنِ المستقبل بدقة وكفاءة',
-  heroSubtitle: 'حلول معمارية مبتكرة وخدمات بناء مستدامة للمشاريع الحديثة',
-  exploreWork: 'استكشف أعمالنا',
+  heroTitle: 'من أرضك إلى مشروعك المكتمل',
+  heroSubtitle: 'نحن نتعامل مع كل شيء بما يتعلق بمشروعك من البداية إلى النهاية',
+  heroServiceOne: 'البناء من الصفر',
+  heroServiceOneDesc: 'نبني مشاريعك من الأساس بأعلى معايير الجودة والأمان',
+  heroServiceTwo: 'تشطيب الوحدات القائمة',
+  heroServiceTwoDesc: 'نقدم خدمات تشطيب احترافية تحول الهياكل إلى مسكن فاخر',
+  heroServiceThree: 'تسليم المفتاح الكامل',
+  heroServiceThreeDesc: 'بناء وتشطيب وتسليم مشروعك جاهزاً للاستخدام',
+  heroCtaPrimary: 'احصل على استشارة مجانية',
+  heroCtaSecondary: 'استكشف مشاريعنا',
+  heroCtaPrimaryMessage: 'مرحباً! أنا مهتم بالاستفسار عن خدماتكم المختلفة. هل يمكنكم تقديم استشارة مجانية حول المشروع الخاص بي؟',
+  exploreWork: 'اكتشف أعمالنا المعمارية',
 
   // About Section
-  whoWeAre: 'من نحن',
-  aboutDescription1: 'بخبرة تزيد عن 20 سنة في التصميم المعماري والبناء، استطعنا أن نؤسس لأنفسنا مكانة رائدة في مجال الحلول المعمارية المبتكرة.',
-  aboutDescription2: 'نجمع بين التكنولوجيا الحديثة والممارسات المستدامة لإنشاء هياكل معمارية تدوم وتلهم. يعمل فريقنا من المهندسين والمعماريين الحائزين على جوائز بشكل تعاوني مع العملاء لتحويل رؤاهم إلى واقع.',
+  whoWeAre: 'شريكك الموثوق في البناء والتشطيب',
+  aboutDescription1: 'نحن نبني مشاريعكم على أرضكم من **البناء** الكامل، مروراً بـ**التشطيب** الاحترافي، وصولاً إلى **تسليم المفتاح** لمشروعكم الجاهز للاستخدام.',
+  aboutDescription2: 'نلتزم بأعلى معايير الجودة والدقة في كل مرحلة، مع ضمان التسليم في الوقت المحدد. من الأساسات وحتى تسليم المفتاح… نحن معك في كل خطوة.',
 
   // Statistics
-  completedProjects: 'مشروع مكتمل',
-  satisfiedClients: 'عميل راضي',
-  yearsExperience: 'سنة من الخبرة',
+  completedProjects: 'مشروع تم تنفيذه',
+  satisfiedClients: 'عميل راضٍ',
+  yearsExperience: 'سنة خبرة',
 
-  // Services
+  // Services - Full Service Offerings
   ourServices: 'خدماتنا',
-  servicesSubtitle: 'حلول شاملة لجميع احتياجاتك المعمارية والبنائية',
-  architecturalDesign: 'التصميم المعماري',
-  architecturalDesignDesc: 'حلول تصميم مبتكرة مخصصة لرؤيتك ومتطلباتك المحددة',
-  projectManagement: 'إدارة المشاريع',
-  projectManagementDesc: 'إشراف متخصص يضمن التزام المشاريع بالجدول الزمني والموازنة',
-  constructionServices: 'خدمات البناء',
-  constructionServicesDesc: 'تنفيذ بناء احترافي مع اهتمام دقيق بالجودة والتفاصيل',
-  sustainability: 'الاستدامة',
-  sustainabilityDesc: 'ممارسات بناء صديقة للبيئة مع شهادات خضراء ومسؤولية بيئية',
+  servicesSubtitle: 'حلول بناء شاملة من الأساس إلى المفتاح الذهبي',
+  
+  // Full Service Cards
+  constructionServiceTitle: 'البناء من الصفر',
+  constructionServiceSubtitle: 'من الأرض إلى الهيكل الكامل',
+  constructionServiceIncludes: 'خدماتنا:',
+  constructionServiceIncludesList: 'التخطيط والتصميم • الأساسات • الهيكل الإنشائي • الأعمال الكهربائية الأساسية',
+  constructionServiceFor: 'للعملاء الذين:',
+  constructionServiceForList: 'يملكون أراضٍ • يريدون بناء من الصفر',
+  constructionServiceMessage: 'مرحباً! أنا مهتم ببناء مشروع على أرضي. هل يمكنكم مساعدتي في البناء من الصفر؟',
+  
+  finishingServiceTitle: 'التشطيب المتكامل',
+  finishingServiceSubtitle: 'من الخرسانة إلى الوحدة المكتملة',
+  finishingServiceIncludes: 'خدماتنا:',
+  finishingServiceIncludesList: 'الأسقف والجدران • الأرضيات الفاخرة • التشطيبات الداخلية • الطلاء النهائي',
+  finishingServiceFor: 'للعملاء الذين:',
+  finishingServiceForList: 'لديهم هيكل خرساني • يريدون تشطيب احترافي',
+  finishingServiceMessage: 'مرحباً! لدي وحدة خرسانية وأحتاج تشطيب احترافي. هل يمكنكم تقديم استشارة؟',
+  
+  turnkeyServiceTitle: 'مشروعك جاهز بالكامل',
+  turnkeyServiceSubtitle: 'مشروعك جاهز للاستخدام',
+  turnkeyServiceIncludes: 'خدماتنا:',
+  turnkeyServiceIncludesList: 'البناء الكامل • التشطيب الاحترافي • تجهيزات أساسية • ضمان شامل',
+  turnkeyServiceFor: 'للعملاء الذين:',
+  turnkeyServiceForList: 'يريدون مشروع جاهز • لا وقت للإشراف',
+  turnkeyServiceMessage: 'مرحباً! أريد مشروعي جاهز من البناء إلى التسليم. هل يمكنكم تقديم عرض سعر كامل؟',
 
   // Featured Projects
   featuredProjects: 'المشاريع المميزة',
@@ -60,8 +86,18 @@ export const ar = {
   phone: 'رقم الهاتف',
   address: 'العنوان',
   businessHours: 'ساعات العمل',
-  businessHoursValue: 'الأحد - الخميس: 9:00 صباحاً - 6:00 مساءً\nالجمعة: 10:00 صباحاً - 4:00 مساءً',
+  businessHoursValue: 'الأحد - الخميس: 9:00 صباحاً - 5:00 مساءً',
   message: 'الرسالة',
+  
+  // New Conversion-Focused Contact Section
+  contactHeadline: 'هل أنت مستعد لبدء مشروعك؟',
+  contactSupportingText: 'ابدأ مشروعك معانا… من أول خطوة لحد ما تستلمه جاهز **بالكامل**.',
+  primaryCTA: 'احصل على استشارة مجانية',
+  startProject: 'ابدأ مشروعك الآن',
+  whatsappCTA: 'تواصل معنا عبر الواتساب',
+  
+  // Contact Info (Secondary)
+  contactInfoSecondary: 'بيانات الاتصال',
   sendMessage: 'إرسال الرسالة',
   fullName: 'الاسم الكامل',
   phoneNumber: 'رقم الهاتف',

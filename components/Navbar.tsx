@@ -11,7 +11,7 @@ import { ar } from '@/lib/ar-content';
 export default function Navbar() {
   const navLinks = [
     { href: '/', label: ar.home },
-    { href: '/projects', label: ar.projects },
+    { href: '/projects#projects', label: ar.projects },
     { href: '/#about', label: ar.about },
     { href: '/#contact', label: ar.contact },
   ];
@@ -48,7 +48,7 @@ export default function Navbar() {
           {/* Mobile Projects Link */}
           <div className="md:hidden">
             <Link
-              href="/projects"
+              href="/projects#projects"
               className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
             >
               {ar.projects}

@@ -34,24 +34,26 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
   return (
     <>
       {/* Gallery Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {images.map((image, index) => (
           <button
             key={index}
             onClick={() => setSelectedIndex(index)}
-            className="relative h-64 rounded-lg overflow-hidden cursor-pointer group"
+            className="relative h-48 sm:h-56 md:h-64 lg:h-72 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
             aria-label={`View ${title} image ${index + 1}`}
           >
             <Image
               src={image}
               alt={`${title} - Image ${index + 1}`}
               fill
-              className="object-cover group-hover:scale-110 transition-transform duration-300"
+              className="object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <span className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium">
-                  View
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-90 group-hover:scale-100">
+                <span className="bg-white/90 backdrop-blur-sm text-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
+                  عرض الصورة
                 </span>
               </div>
             </div>
@@ -61,54 +63,86 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
 
       {/* Lightbox Modal */}
       {selectedIndex !== null && (
-        <dialog
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-          onKeyDown={handleKeyDown}
-          open
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setSelectedIndex(null)}
         >
-          <div className="relative max-w-4xl w-full max-h-[90vh]">
+          <div 
+            className="relative max-w-6xl w-full max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Close Button */}
             <button
               onClick={() => setSelectedIndex(null)}
-              className="absolute -top-10 right-0 text-white hover:text-accent transition-colors"
+              className="absolute -top-12 right-0 text-white hover:text-accent transition-colors p-2 rounded-full hover:bg-white/10"
               aria-label="Close gallery"
             >
               <X size={32} />
             </button>
 
             {/* Image */}
-            <div className="relative w-full h-96 md:h-[500px]">
+            <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[75vh]">
               <Image
                 src={images[selectedIndex]}
                 alt={`${title} - Image ${selectedIndex + 1}`}
                 fill
                 className="object-contain"
+                sizes="100vw"
+                priority
               />
             </div>
 
             {/* Navigation Buttons */}
             <button
               onClick={handlePrevious}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-colors"
+              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-all duration-200 p-2 rounded-full hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Previous image"
+              disabled={images.length <= 1}
             >
-              <ChevronLeft size={40} />
+              <ChevronLeft size={32} />
             </button>
 
             <button
               onClick={handleNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-colors"
+              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-all duration-200 p-2 rounded-full hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Next image"
+              disabled={images.length <= 1}
             >
-              <ChevronRight size={40} />
+              <ChevronRight size={32} />
             </button>
 
             {/* Image Counter */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm font-medium">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
               {selectedIndex + 1} / {images.length}
             </div>
+
+            {/* Thumbnail Strip */}
+            {images.length > 1 && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedIndex(index)}
+                    className={`w-12 h-12 rounded-lg overflow-hidden transition-all duration-200 ${
+                      index === selectedIndex 
+                        ? 'ring-2 ring-white ring-offset-2 ring-offset-black' 
+                        : 'opacity-60 hover:opacity-100'
+                    }`}
+                    aria-label={`Go to image ${index + 1}`}
+                  >
+                    <Image
+                      src={images[index]}
+                      alt={`Thumbnail ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        </dialog>
+        </div>
       )}
     </>
   );

@@ -41,14 +41,14 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
                 <Phone size={16} className="shrink-0" />
-                <a href="tel:+2001044088731" className="hover:opacity-80 transition-opacity">
-                  +20 104 408 8731
+                <a href="tel:+2001019499997" className="hover:opacity-80 transition-opacity">
+                  01019499997
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Mail size={16} className="shrink-0" />
-                <a href="mailto:info@alsarh.com" className="hover:opacity-80 transition-opacity">
-                  info@alsarh.com
+                <a href="mailto:Alsarahconstuction2022@gmail.com" className="hover:opacity-80 transition-opacity">
+                  Alsarahconstuction2022@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-2">

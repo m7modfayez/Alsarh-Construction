@@ -1,16 +1,17 @@
 import { Statistic } from '@/types';
+import { ar } from '@/lib/ar-content';
 
 export const statistics: Statistic[] = [
   {
-    number: '+100',
-    label: 'Completed Projects',
-  },
-  {
-    number: '+200',
-    label: 'Satisfied Clients',
-  },
-  {
     number: '+20',
-    label: 'Years of Experience',
+    label: ar.yearsExperience,
+  },
+  {
+    number: '+50',
+    label: ar.completedProjects,
+  },
+  {
+    number: '+100',
+    label: ar.satisfiedClients,
   },
 ];
