@@ -9,8 +9,8 @@ import { ProjectCardProps } from '@/types';
 export default function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link href={`/projects/${project.id}`}>
-      <article className="group cursor-pointer rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 bg-white">
-        <div className="relative h-64 md:h-72 overflow-hidden bg-muted">
+      <article className="group cursor-pointer rounded-xl overflow-hidden shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 bg-white">
+        <div className="relative aspect-video overflow-hidden bg-muted">
           <Image
             src={project.image}
             alt={project.title}
@@ -27,15 +27,23 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             </div>
           </div>
         </div>
-        <div className="p-4">
-          <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors duration-300">
+        <div className="p-5">
+          <h3 className="font-bold text-xl text-foreground group-hover:text-primary transition-colors duration-300 mb-2">
             {project.title}
           </h3>
           {project.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
               {project.description}
             </p>
           )}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {project.location} • {project.year}
+            </span>
+            <span className="text-primary font-medium text-sm group-hover:text-primary/80 transition-colors">
+              عرض التفاصيل ←
+            </span>
+          </div>
         </div>
       </article>
     </Link>

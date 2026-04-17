@@ -7,7 +7,7 @@ export const statistics: Statistic[] = [
     label: ar.yearsExperience,
   },
   {
-    number: '+50',
+    number: '+100',
     label: ar.completedProjects,
   },
   {

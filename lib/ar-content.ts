@@ -17,24 +17,23 @@ export const ar = {
   companyDescriptionLong: 'نقدم حلول بناء وتشطيب متكاملة من البداية حتى تسليم المشروع جاهز بالكامل.',
 
   // Home Page
-  heroTitle: 'من أرضك إلى مشروعك المكتمل',
-  heroSubtitle: 'نحن نتعامل مع كل شيء بما يتعلق بمشروعك من البداية إلى النهاية',
-  heroServiceOne: 'البناء من الصفر',
-  heroServiceOneDesc: 'نبني مشاريعك من الأساس بأعلى معايير الجودة والأمان',
-  heroServiceTwo: 'تشطيب الوحدات القائمة',
-  heroServiceTwoDesc: 'نقدم خدمات تشطيب احترافية تحول الهياكل إلى مسكن فاخر',
-  heroServiceThree: 'تسليم المفتاح الكامل',
-  heroServiceThreeDesc: 'بناء وتشطيب وتسليم مشروعك جاهزاً للاستخدام',
-  heroCtaPrimary: 'احصل على استشارة مجانية',
-  heroCtaSecondary: 'استكشف مشاريعنا',
-  heroCtaPrimaryMessage: 'مرحباً! أنا مهتم بالاستفسار عن خدماتكم المختلفة. هل يمكنكم تقديم استشارة مجانية حول المشروع الخاص بي؟',
-  exploreWork: 'اكتشف أعمالنا المعمارية',
+heroTitle: 'من أرضك إلى مشروع جاهز بالكامل',
+heroSubtitle: 'ننـفذ مشروعك من البداية حتى التسليم النهائي، بدايةً من البناء وحتى التشطيب الكامل حسب احتياجاتك',
+heroServiceOne: 'البناء من الصفر',
+heroServiceOneDesc: 'تنفيذ كامل للهيكل الخرساني على أرضك بأعلى معايير الجودة والأمان',
+heroServiceTwo: 'التشطيب الكامل',
+heroServiceTwoDesc: 'نحوّل الهيكل القائم إلى وحدة جاهزة للسكن بتشطيب احترافي عالي الجودة',
+heroServiceThree: 'تنفيذ متكامل للمشروع',
+heroServiceThreeDesc: 'نتولى كل مراحل المشروع من التخطيط والبناء حتى تسليمه جاهز للاستخدام',
+heroCtaPrimary: 'احصل على استشارة مجانية',
+heroCtaSecondary: 'شاهد مشاريعنا',
+heroCtaPrimaryMessage: 'مرحباً، أرغب في الاستفسار عن تنفيذ مشروع على أرضي، هل يمكنكم مساعدتي في البناء أو التشطيب أو التنفيذ الكامل؟',
+exploreWork: 'استكشف مشاريعنا المنفذة',
 
   // About Section
-  whoWeAre: 'شريكك الموثوق في البناء والتشطيب',
-  aboutDescription1: 'نحن نبني مشاريعكم على أرضكم من **البناء** الكامل، مروراً بـ**التشطيب** الاحترافي، وصولاً إلى **تسليم المفتاح** لمشروعكم الجاهز للاستخدام.',
-  aboutDescription2: 'نلتزم بأعلى معايير الجودة والدقة في كل مرحلة، مع ضمان التسليم في الوقت المحدد. من الأساسات وحتى تسليم المفتاح… نحن معك في كل خطوة.',
-
+whoWeAre: 'شريكك الموثوق لتنفيذ مشروعك من البداية للنهاية',
+aboutDescription1: 'ننفذ مشروعك على أرضك بدايةً من **الهيكل الخرساني**، مرورًا بـ**التشطيب الكامل**، وحتى تسليمه جاهز للاستخدام حسب احتياجاتك.',
+aboutDescription2: 'نقدم حلول متكاملة تشمل التخطيط، التنفيذ، والتشطيب، مع الالتزام بأعلى معايير الجودة والدقة، وضمان التسليم في الوقت المتفق عليه. نرافقك خطوة بخطوة حتى اكتمال مشروعك.',
   // Statistics
   completedProjects: 'مشروع تم تنفيذه',
   satisfiedClients: 'عميل راضٍ',
@@ -42,33 +41,27 @@ export const ar = {
 
   // Services - Full Service Offerings
   ourServices: 'خدماتنا',
-  servicesSubtitle: 'حلول بناء شاملة من الأساس إلى المفتاح الذهبي',
+  servicesSubtitle: 'من البناء إلى التشطيب… تنفيذ كامل لمشروعك',
   
   // Full Service Cards
+  // Construction
   constructionServiceTitle: 'البناء من الصفر',
-  constructionServiceSubtitle: 'من الأرض إلى الهيكل الكامل',
-  constructionServiceIncludes: 'خدماتنا:',
-  constructionServiceIncludesList: 'التخطيط والتصميم • الأساسات • الهيكل الإنشائي • الأعمال الكهربائية الأساسية',
-  constructionServiceFor: 'للعملاء الذين:',
-  constructionServiceForList: 'يملكون أراضٍ • يريدون بناء من الصفر',
-  constructionServiceMessage: 'مرحباً! أنا مهتم ببناء مشروع على أرضي. هل يمكنكم مساعدتي في البناء من الصفر؟',
+  constructionServiceSubtitle: 'تنفيذ الهيكل الخرساني على أرضك',
+  constructionServiceIncludesList: 'التخطيط والتصميم • أعمال الحفر والأساسات • الهيكل الخرساني • أعمال السباكة والكهرباء الأساسية',
+  constructionServiceMessage: 'مرحباً، أرغب في بناء مشروع على أرضي من البداية. هل يمكنكم تنفيذ الهيكل الخرساني بالكامل؟',
   
+  // Finishing
   finishingServiceTitle: 'التشطيب المتكامل',
-  finishingServiceSubtitle: 'من الخرسانة إلى الوحدة المكتملة',
-  finishingServiceIncludes: 'خدماتنا:',
-  finishingServiceIncludesList: 'الأسقف والجدران • الأرضيات الفاخرة • التشطيبات الداخلية • الطلاء النهائي',
-  finishingServiceFor: 'للعملاء الذين:',
-  finishingServiceForList: 'لديهم هيكل خرساني • يريدون تشطيب احترافي',
-  finishingServiceMessage: 'مرحباً! لدي وحدة خرسانية وأحتاج تشطيب احترافي. هل يمكنكم تقديم استشارة؟',
+  finishingServiceSubtitle: 'تحويل الهيكل إلى وحدة جاهزة للسكن',
+  finishingServiceIncludesList: 'المحارة والتشطيبات • الأرضيات • الأسقف • الدهانات • الأعمال الكهربائية والسباكة النهائية',
+  finishingServiceMessage: 'مرحباً، لدي هيكل قائم وأرغب في تشطيبه بالكامل. هل يمكنكم تقديم استشارة وتفاصيل التنفيذ؟',
   
-  turnkeyServiceTitle: 'مشروعك جاهز بالكامل',
-  turnkeyServiceSubtitle: 'مشروعك جاهز للاستخدام',
-  turnkeyServiceIncludes: 'خدماتنا:',
-  turnkeyServiceIncludesList: 'البناء الكامل • التشطيب الاحترافي • تجهيزات أساسية • ضمان شامل',
-  turnkeyServiceFor: 'للعملاء الذين:',
-  turnkeyServiceForList: 'يريدون مشروع جاهز • لا وقت للإشراف',
-  turnkeyServiceMessage: 'مرحباً! أريد مشروعي جاهز من البناء إلى التسليم. هل يمكنكم تقديم عرض سعر كامل؟',
-
+  // Full Project
+  turnkeyServiceTitle: 'تنفيذ متكامل للمشروع',
+  turnkeyServiceSubtitle: 'من الأرض حتى تسليم المشروع جاهز للاستخدام',
+  turnkeyServiceIncludesList: 'التخطيط والتصميم • البناء الكامل • التشطيب • إدارة المشروع • تسليم نهائي جاهز',
+  turnkeyServiceMessage: 'مرحباً، أرغب في تنفيذ مشروع كامل على أرضي من البداية حتى التسليم النهائي. هل يمكنكم تقديم عرض شامل؟',
+    
   // Featured Projects
   featuredProjects: 'المشاريع المميزة',
   featuredProjectsSubtitle: 'استكشف أحدث إنجازاتنا المعمارية والمشاريع المكتملة',

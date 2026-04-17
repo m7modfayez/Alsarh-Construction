@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
 import { ar } from '@/lib/ar-content';
 
 /**
@@ -9,6 +11,8 @@ import { ar } from '@/lib/ar-content';
  * Responsive navigation with mobile menu
  */
 export default function Navbar() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const navLinks = [
     { href: '/', label: ar.home },
     { href: '/projects#projects', label: ar.projects },
@@ -24,7 +28,7 @@ export default function Navbar() {
           <Link href="/" className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
             <Image
               src="/images/alsarh1.png"
-              alt="الصرح"
+              alt="Al-sarh"
               width={50}
               height={50}
               priority
@@ -45,16 +49,39 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Mobile Projects Link */}
+          {/* Mobile Menu Button */}
           <div className="md:hidden">
-            <Link
-              href="/projects#projects"
-              className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu"
             >
-              {ar.projects}
-            </Link>
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-border">
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-gray-100 hover:text-primary transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

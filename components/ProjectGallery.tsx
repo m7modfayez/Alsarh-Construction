@@ -50,13 +50,6 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-90 group-hover:scale-100">
-                <span className="bg-white/90 backdrop-blur-sm text-foreground px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
-                  عرض الصورة
-                </span>
-              </div>
-            </div>
           </button>
         ))}
       </div>
