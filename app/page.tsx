@@ -1,20 +1,72 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Hero from '@/components/Hero';
 import FullServiceCard from '@/components/FullServiceCard';
 import ServiceCard from '@/components/ServiceCard';
 import ProjectCard from '@/components/ProjectCard';
 import ContactForm from '@/components/ContactForm';
-import { projects, services, statistics, teamMembers } from '@/data';
+import { services, statistics, teamMembers } from '@/data';
 import { ar } from '@/lib/ar-content';
+import { supabase } from '@/lib/supabaseClient';
+import { Project } from '@/types';
 
 /**
  * Home Page
  * Main landing page featuring hero, about, services, featured projects, team, and contact sections
  */
 export default function Home() {
-  const featuredProjects = projects.slice(0, 3);
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchFeaturedProjects()
+  }, [])
+
+  const fetchFeaturedProjects = async () => {
+    try {
+      setProjectsLoading(true)
+      
+      // Fetch projects with their images
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          project_images (
+            image_url,
+            is_cover
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (projectsError) throw projectsError
+
+      // Transform data to match expected format
+      const transformedProjects = projectsData?.map(project => {
+        const coverImage = project.project_images?.find((img: any) => img.is_cover)?.image_url || project.cover_image
+        const allImages = project.project_images?.map((img: any) => img.image_url) || []
+        
+        return {
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          location: project.location,
+          year: project.year,
+          category: 'residential' as const, // Default category
+          image: coverImage,
+          gallery: allImages
+        }
+      }) || []
+
+      setFeaturedProjects(transformedProjects)
+    } catch (err) {
+      console.error('Failed to fetch featured projects:', err)
+    } finally {
+      setProjectsLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -131,11 +183,21 @@ export default function Home() {
               {ar.featuredProjectsSubtitle}
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            {featuredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+          {projectsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {[1, 2, 3].map((index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="bg-white rounded-xl shadow-md h-64"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {featuredProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
           <div className="text-center">
             <a
               href="/projects"
