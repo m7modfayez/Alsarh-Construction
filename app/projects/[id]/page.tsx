@@ -1,9 +1,13 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Calendar, ArrowRight, MessageCircle } from 'lucide-react';
 import ProjectGallery from '@/components/ProjectGallery';
 import ProjectCard from '@/components/ProjectCard';
-import { projects } from '@/data';
+import { supabase } from '@/lib/supabaseClient'
+import { Project } from '@/types'
 
 interface ProjectDetailPageProps {
   params: Promise<{
@@ -15,17 +19,114 @@ interface ProjectDetailPageProps {
  * Project Detail Page
  * Displays detailed information about a specific project
  */
-export async function generateStaticParams() {
-  return projects.map((project) => ({
-    id: project.id,
-  }));
-}
+export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
+  const [project, setProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [projectId, setProjectId] = useState<string>('')
+  const [relatedProjects, setRelatedProjects] = useState<Project[]>([])
 
-export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
-  const { id } = await params;
-  const project = projects.find((p) => p.id === id);
+  useEffect(() => {
+    const getProjectId = async () => {
+      const { id } = await params
+      setProjectId(id)
+      fetchProject(id)
+    }
+    getProjectId()
+  }, [params])
 
-  if (!project) {
+  useEffect(() => {
+    if (projectId) {
+      fetchRelatedProjects().then(setRelatedProjects)
+    }
+  }, [projectId])
+
+  const fetchProject = async (id: string) => {
+    try {
+      setLoading(true)
+      
+      // Fetch project with images
+      const { data: projectData, error: projectError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          project_images (
+            image_url,
+            is_cover
+          )
+        `)
+        .eq('id', id)
+        .single()
+
+      if (projectError) throw projectError
+
+      if (!projectData) {
+        setError('المشروع غير موجود')
+        return
+      }
+
+      // Transform data to match expected format
+      const coverImage = projectData.project_images?.find((img: any) => img.is_cover)?.image_url || projectData.cover_image
+      const allImages = projectData.project_images?.map((img: any) => img.image_url) || []
+      
+      const transformedProject: Project = {
+        id: projectData.id,
+        title: projectData.title,
+        description: projectData.description,
+        location: projectData.location,
+        year: projectData.year,
+        category: 'residential' as const, // Default category
+        image: coverImage,
+        gallery: allImages
+      }
+
+      setProject(transformedProject)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'فشل في جلب تفاصيل المشروع')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchRelatedProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .neq('id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (error) throw error
+
+      return data?.map(project => {
+        const coverImage = project.cover_image
+        return {
+          id: project.id,
+          title: project.title,
+          description: project.description,
+          location: project.location,
+          year: project.year,
+          category: 'residential' as const,
+          image: coverImage,
+          gallery: [coverImage].filter(Boolean)
+        }
+      }) || []
+    } catch (err) {
+      console.error('Failed to fetch related projects:', err)
+      return []
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (error || !project) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
@@ -44,95 +145,108 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     );
   }
 
-  const relatedProjects = projects
-    .filter((p) => p.id !== project.id)
-    .slice(0, 3);
-
   return (
     <div className="min-h-screen">
       {/* Project Details */}
       <section className="py-16 md:py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-20 mb-24">
-            {/* Description */}
-            <div className="lg:col-span-2 space-y-8">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">نظرة عامة على المشروع</h2>
-                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-                  {project.description}
-                </p>
-              </div>
-
-              <div className="bg-secondary/50 rounded-xl p-6 md:p-8">
-                <h3 className="font-bold text-foreground mb-4 text-xl">أبرز ما في المشروع</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 shrink-0" />
-                    <p className="text-muted-foreground">تصميم معماري وتخطيط متقدم</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 mb-32">
+            {/* Main Content */}
+            <div className="lg:col-span-2">
+              {/* Project Header */}
+              <div className="mb-12">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">{project.title}</h1>
+                <div className="flex items-center gap-4 text-muted-foreground mb-8">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-5 h-5" />
+                    <span className="font-medium">{project.location}</span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 shrink-0" />
-                    <p className="text-muted-foreground">ممارسات بناء مستدامة</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 shrink-0" />
-                    <p className="text-muted-foreground">تقنيات بناء متقدمة</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2 shrink-0" />
-                    <p className="text-muted-foreground">تسليم في الموعد المحدد</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    <span className="font-medium">{project.year}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Project Description */}
+              <div className="prose prose-lg max-w-none">
+                {/* <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">نظرة عامة على المشروع</h2> */}
+                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8">
+                  {project.description}
+                </p>
               </div>
             </div>
 
             {/* Project Info Sidebar */}
-            <div className="bg-gradient-to-br from-secondary/50 to-secondary rounded-2xl p-6 md:p-8 shadow-lg">
-              <h3 className="text-xl font-bold text-foreground mb-6">تفاصيل المشروع</h3>
-              <div className="space-y-6">
-                <div className="bg-white/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">اسم المشروع</p>
-                  <p className="font-bold text-foreground text-lg">{project.title}</p>
+            <div className="lg:col-span-1">
+              <div className="sticky top-8">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                  {/* Cover Image */}
+                  <div className="relative h-48 bg-gray-100">
+                    <Image
+                      src={project.image}
+                      alt={project.title}
+                      fill
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h3 className="text-white font-bold text-xl">{project.title}</h3>
+                    </div>
+                  </div>
+                  
+                  {/* Project Details */}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="text-sm text-muted-foreground font-medium">الموقع</span>
+                      <span className="font-bold text-foreground">{project.location}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <span className="text-sm text-muted-foreground font-medium">السنة</span>
+                      <span className="font-bold text-foreground">{project.year}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white/50 rounded-lg p-4">
-                  <p className="text-xs text-muted-foreground mb-1">الموقع</p>
-                  <p className="font-bold text-foreground text-lg">{project.location}</p>
-                </div>
-                <div className="bg-white/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground mb-1">سنة الإنجاز</p>
-                  <p className="font-bold text-foreground text-lg">{project.year}</p>
+
+                {/* Navigation */}
+                <div className="mt-6">
+                  <Link
+                    href="/projects"
+                    className="inline-flex items-center justify-center w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-2 rotate-180" />العودة للمشاريع</Link>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Gallery Section */}
-          <div className="mb-20">
-            <div className="mb-8">
+          <div className="mb-24">
+            <div className="mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">معرض صور المشروع</h2>
               <p className="text-muted-foreground text-lg">استكشف جمال وتفاصيل المشروع من خلال معرض الصور</p>
             </div>
             <ProjectGallery images={project.gallery} title={project.title} />
           </div>
-        </div>
-      </section>
 
-       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-primary/5 to-secondary/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">اسأل عن هذا المشروع</h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            تواصل معنا اليوم واحصل على استشارة مجانية لمشروعك القادم
-          </p>
-          <a
-            href={`https://wa.me/201044088731?text=${encodeURIComponent(`السلام عليكم، أنا مهتم بمشروع ${project.title} وحابب أعرف تفاصيل أكتر وإمكانية تنفيذ مشروع مشابه.`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-          >
-            <MessageCircle className="w-5 h-5 mr-2" />
-            اسأل عن هذا المشروع
-          </a>
+          {/* CTA Section */}
+          <div className="mb-24">
+            <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8 md:p-12 border border-primary/20 text-center">
+              <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">مهتم بهذا المشروع؟</h3>
+              <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
+                تواصل معنا لمعرفة المزيد عن هذا المشروع أو لمناقشة مشروع مشابه لاحتياجاتك.
+              </p>
+              <a
+                href={`https://wa.me/201044088731?text=${encodeURIComponent(`السلام عليكم، أنا معجب بمشروع ${project.title} وحابب أعرف تفاصيل أكتر وإمكانية تنفيذ مشروع شبه ده.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                اسأل عن المشروع ده
+              </a>
+            </div>
+          </div>
         </div>
       </section>
       
