@@ -11,19 +11,44 @@ export default function Hero() {
   return (
     <section className="relative w-full h-[80vh] flex items-center justify-center overflow-hidden">
       
-      {/* Single Background Image */}
-      <Image
-        src="/images/heroBackground.jpeg"
-        alt="Al-Sarh Construction"
-        fill
-        className="object-cover opacity-60"
-        priority
-      />
+      {/* Desktop Background Image - Visible on screens >= 768px */}
+      <div className="hidden md:block absolute inset-0">
+        <Image
+          src="/images/heroBgDesktop.png"
+          alt="Al-Sarh Construction"
+          fill
+          className="object-cover opacity-50 object-center"
+          priority
+          sizes="100vw"
+          quality={95}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+          style={{ objectPosition: 'center center' }}
+        />
+      </div>
+
+      {/* Mobile Background Image - Visible on screens < 768px */}
+      <div className="md:hidden absolute inset-0">
+        <Image
+          src="/images/heroBgMob.png"
+          alt="Al-Sarh Construction"
+          fill
+          className="object-cover opacity-50 object-center"
+          priority
+          sizes="100vw"
+          quality={95}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+          style={{ objectPosition: 'center center' }}
+        />
+      </div>
       
-      {/* Single Dark Overlay */}
+      {/* Improved Dark Overlay for Better Text Contrast */}
       <div 
         className="absolute inset-0"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+        style={{ 
+          background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%)'
+        }}
       />
       
       {/* Content Container */}

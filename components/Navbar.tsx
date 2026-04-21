@@ -14,7 +14,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: '/', label: ar.home },
+    { href: '/', label: ar.home, isScroll: true },
     { href: '/projects#projects', label: ar.projects },
     { href: '/#about', label: ar.about },
     { href: '/#contact', label: ar.contact },
@@ -25,7 +25,16 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
+          <Link 
+            href="/"
+            className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
+            onClick={() => {
+              // If already on home page, scroll to top
+              if (window.location.pathname === '/') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
             <Image
               src="/images/alsarh1.png"
               alt="Al-sarh"
@@ -39,13 +48,29 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-foreground hover:text-primary transition-colors font-medium text-sm"
-              >
-                {link.label}
-              </Link>
+              link.isScroll ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-foreground hover:text-primary transition-colors font-medium text-sm"
+                  onClick={() => {
+                    // If already on home page, scroll to top
+                    if (window.location.pathname === '/') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-foreground hover:text-primary transition-colors font-medium text-sm"
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </div>
 
@@ -70,14 +95,31 @@ export default function Navbar() {
           <div className="md:hidden border-t border-border">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-gray-100 hover:text-primary transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
+                link.isScroll ? (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-gray-100 hover:text-primary transition-colors"
+                    onClick={() => {
+                      // If already on home page, scroll to top
+                      if (window.location.pathname === '/') {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block px-3 py-2 rounded-lg text-base font-medium text-foreground hover:bg-gray-100 hover:text-primary transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                )
               ))}
             </div>
           </div>
