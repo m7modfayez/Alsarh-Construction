@@ -27,6 +27,7 @@ interface Project {
   location: string
   year: number
   cover_image: string
+  scope_of_work?: string
 }
 
 export default function EditProjectPage() {
@@ -44,6 +45,7 @@ export default function EditProjectPage() {
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
   const [year, setYear] = useState('')
+  const [scopeOfWork, setScopeOfWork] = useState('')
   const [existingImages, setExistingImages] = useState<ProjectImage[]>([])
   const [newImages, setNewImages] = useState<UploadedImage[]>([])
 
@@ -77,6 +79,7 @@ export default function EditProjectPage() {
       setDescription(projectData.description || '')
       setLocation(projectData.location)
       setYear(projectData.year.toString())
+      setScopeOfWork(projectData.scope_of_work || '')
       setExistingImages(imagesData || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل في جلب بيانات المشروع')
@@ -200,20 +203,31 @@ export default function EditProjectPage() {
     try {
       // Update project
       const coverImage = existingImages.find(img => img.is_cover)?.image_url || 
-                       newImages.find(img => img.isCover)?.url
+                       newImages.find(img => img.isCover)?.url ||
+                       project?.cover_image // Fallback to current cover image
+
+      const updateData: any = {
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        year: parseInt(year),
+        scope_of_work: scopeOfWork.trim() ? scopeOfWork.trim().split(/[\+,\u2022]/).map(item => item.trim()).filter(item => item.length > 0) : []
+      }
+
+      // Only include cover_image if it exists
+      if (coverImage) {
+        updateData.cover_image = coverImage
+      }
 
       const { error: updateError } = await supabase
         .from('projects')
-        .update({
-          title: title.trim(),
-          description: description.trim(),
-          location: location.trim(),
-          year: parseInt(year),
-          cover_image: coverImage
-        })
+        .update(updateData)
         .eq('id', projectId)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('Update error:', updateError)
+        throw new Error(updateError.message || 'Failed to update project')
+      }
 
       // Add new images to database
       if (newImages.length > 0) {
@@ -293,53 +307,65 @@ export default function EditProjectPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">المعلومات الأساسية</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                عنوان المشروع *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="أدخل عنوان المشروع"
-                required
-              />
-            </div>
+      {/* Basic Information */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">المعلومات الأساسية</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              عنوان المشروع *
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="أدخل عنوان المشروع"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                الموقع *
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="أدخل موقع المشروع"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              الموقع *
+            </label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="أدخل موقع المشروع"
+              required
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                السنة *
-              </label>
-              <input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                min="2000"
-                max="2030"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              السنة *
+            </label>
+            <input
+              type="number"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="2000"
+              max="2030"
+              required
+            />
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              نوع العمل
+            </label>
+            <textarea
+              value={scopeOfWork}
+              onChange={(e) => setScopeOfWork(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="نوع العمل"
+            />
           </div>
 
           <div className="mt-6">
@@ -355,25 +381,99 @@ export default function EditProjectPage() {
             />
           </div>
         </div>
+      </div>
 
-        {/* Existing Images */}
-        {existingImages.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">الصور الحالية</h2>
+      {/* Existing Images */}
+      {existingImages.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">الصور الحالية</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {existingImages.map((image) => (
+              <div key={image.image_url} className="relative group">
+                <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
+                  <Image
+                    src={image.image_url}
+                    alt="Project image"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                
+                {/* Cover Badge */}
+                {image.is_cover && (
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                    صورة الغلاف
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-reverse space-x-2">
+                  {!image.is_cover && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetCover(image.image_url, false)}
+                      className="p-2 bg-white rounded-full hover:bg-gray-100"
+                      title="تعيين كصورة غلاف"
+                    >
+                      <span className="text-xs">📷</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExistingImage(image)}
+                    className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
+                    title="حذف الصورة"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* New Images */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">إضافة صور جديدة</h2>
+        
+        {/* Upload Button */}
+        <div className="mb-6">
+          <label className="block">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={loading}
+            />
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
+              <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+              <p className="text-gray-600">اضغط لرفع الصور أو اسحب وأفلت</p>
+              <p className="text-sm text-gray-500 mt-1">يمكنك رفع多个 صور في نفس الوقت</p>
+            </div>
+          </label>
+        </div>
+
+        {/* New Uploaded Images */}
+        {newImages.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">الصور الجديدة ({newImages.length})</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {existingImages.map((image) => (
-                <div key={image.image_url} className="relative group">
+              {newImages.map((image, index) => (
+                <div key={index} className="relative group">
                   <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
                     <Image
-                      src={image.image_url}
-                      alt="Project image"
+                      src={image.url}
+                      alt={`New uploaded ${index + 1}`}
                       fill
                       className="object-cover"
                     />
                   </div>
                   
                   {/* Cover Badge */}
-                  {image.is_cover && (
+                  {image.isCover && (
                     <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
                       صورة الغلاف
                     </div>
@@ -381,10 +481,10 @@ export default function EditProjectPage() {
 
                   {/* Actions */}
                   <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-reverse space-x-2">
-                    {!image.is_cover && (
+                    {!image.isCover && (
                       <button
                         type="button"
-                        onClick={() => handleSetCover(image.image_url, false)}
+                        onClick={() => handleSetCover(image.url, true)}
                         className="p-2 bg-white rounded-full hover:bg-gray-100"
                         title="تعيين كصورة غلاف"
                       >
@@ -393,7 +493,7 @@ export default function EditProjectPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => handleRemoveExistingImage(image)}
+                      onClick={() => handleRemoveNewImage(index)}
                       className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
                       title="حذف الصورة"
                     >
@@ -405,102 +505,28 @@ export default function EditProjectPage() {
             </div>
           </div>
         )}
+      </div>
 
-        {/* New Images */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">إضافة صور جديدة</h2>
-          
-          {/* Upload Button */}
-          <div className="mb-6">
-            <label className="block">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                disabled={loading}
-              />
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
-                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <p className="text-gray-600">اضغط لرفع الصور أو اسحب وأفلت</p>
-                <p className="text-sm text-gray-500 mt-1">يمكنك رفع多个 صور في نفس الوقت</p>
-              </div>
-            </label>
-          </div>
-
-          {/* New Uploaded Images */}
-          {newImages.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">الصور الجديدة ({newImages.length})</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {newImages.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                      <Image
-                        src={image.url}
-                        alt={`New uploaded ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    
-                    {/* Cover Badge */}
-                    {image.isCover && (
-                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                        صورة الغلاف
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-reverse space-x-2">
-                      {!image.isCover && (
-                        <button
-                          type="button"
-                          onClick={() => handleSetCover(image.url, true)}
-                          className="p-2 bg-white rounded-full hover:bg-gray-100"
-                          title="تعيين كصورة غلاف"
-                        >
-                          <span className="text-xs">📷</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNewImage(index)}
-                        className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
-                        title="حذف الصورة"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Submit Button */}
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
+              جاري التحديث...
+            </>
+          ) : (
+            <>
+              <Save className="ml-2 h-4 w-4" />
+              تحديث المشروع
+            </>
           )}
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white ml-2"></div>
-                جاري التحديث...
-              </>
-            ) : (
-              <>
-                <Save className="ml-2 h-4 w-4" />
-                تحديث المشروع
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+        </button>
+      </div>
+    </form>
+  </div>
+  )}

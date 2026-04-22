@@ -10,6 +10,7 @@ export interface Project {
   location: string;
   year: number;
   gallery: string[];
+  scope_of_work?: string[];
 }
 
 /**

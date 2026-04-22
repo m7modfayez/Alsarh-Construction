@@ -77,7 +77,8 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
         year: projectData.year,
         category: 'residential' as const, // Default category
         image: coverImage,
-        gallery: allImages
+        gallery: allImages,
+        scope_of_work: projectData.scope_of_work
       }
 
       setProject(transformedProject)
@@ -175,7 +176,8 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                   {project.description}
                 </p>
               </div>
-            </div>
+
+                          </div>
 
             {/* Project Info Sidebar */}
             <div className="lg:col-span-1">
@@ -205,6 +207,29 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
                       <span className="text-sm text-muted-foreground font-medium">السنة</span>
                       <span className="font-bold text-foreground">{project.year}</span>
                     </div>
+                    
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 my-4"></div>
+                    
+                    {/* **Scope of Work** Section */}
+                    {project.scope_of_work && project.scope_of_work.length > 0 && (
+                      <div className="mt-4">
+                        <h4 className="text-sm text-muted-foreground font-medium mb-3">نوع العمل</h4>
+                        <ul className="space-y-2">
+                          {project.scope_of_work
+                            .join('+') // Convert array back to string
+                            .split(/[\+,\u2022]/) // Split by +, comma, or bullet
+                            .map((item: string) => item.trim())
+                            .filter((item: string) => item.length > 0)
+                            .map((item: string, index: number) => (
+                              <li key={index} className="flex items-start gap-2 text-sm text-foreground">
+                                <span className="text-primary mt-0.5">•</span>
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 

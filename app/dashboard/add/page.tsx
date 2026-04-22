@@ -23,6 +23,7 @@ export default function AddProjectPage() {
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
   const [year, setYear] = useState(new Date().getFullYear().toString())
+  const [scopeOfWork, setScopeOfWork] = useState('')
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,7 +118,8 @@ export default function AddProjectPage() {
           description: description.trim(),
           location: location.trim(),
           year: parseInt(year),
-          cover_image: coverImage.url
+          cover_image: coverImage.url,
+          scope_of_work: scopeOfWork.trim() ? scopeOfWork.trim().split(/[\+,\u2022]/).map(item => item.trim()).filter(item => item.length > 0) : []
         })
         .select()
         .single()
@@ -227,6 +229,19 @@ export default function AddProjectPage() {
               rows={4}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="أدخل وصف المشروع"
+            />
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              نوع العمل
+            </label>
+            <textarea
+              value={scopeOfWork}
+              onChange={(e) => setScopeOfWork(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="نوع العمل"
             />
           </div>
         </div>
