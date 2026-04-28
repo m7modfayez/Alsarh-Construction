@@ -1,112 +1,72 @@
-'use client'
+import ProjectCard from "@/components/ProjectCard";
+import { getAllProjects } from "@/lib/data-fetching";
+import { Metadata } from "next";
 
-import { useState, useEffect } from 'react'
-import ProjectCard from '@/components/ProjectCard'
-import { supabase } from '@/lib/supabaseClient'
-import { Project } from '@/types'
+export const metadata: Metadata = {
+  title: "مشاريعنا | شركة الهندسة المعمارية",
+  description:
+    "استكشف أحدث مشاريعنا المعمارية والإنشائية، من التصميم إلى التنفيذ بأعلى معايير الجودة والاحترافية.",
+};
 
-/**
- * Projects Page
- * Displays all projects in a unified grid
- */
-export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  const fetchProjects = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch projects with their images
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          project_images (
-            image_url,
-            is_cover
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (projectsError) throw projectsError
-
-      // Transform data to match expected format
-      const transformedProjects = projectsData?.map(project => {
-        const coverImage = project.project_images?.find((img: any) => img.is_cover)?.image_url || project.cover_image
-        const allImages = project.project_images?.map((img: any) => img.image_url) || []
-        
-        return {
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          location: project.location,
-          year: project.year,
-          category: 'residential' as const, // Default category
-          image: coverImage,
-          gallery: allImages
-        }
-      }) || []
-
-      setProjects(transformedProjects)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في جلب المشاريع')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 text-lg mb-4">{error}</div>
-          <button
-            onClick={fetchProjects}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
-      </div>
-    )
-  }
+export default async function ProjectsPage() {
+  const projects = await getAllProjects();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#FAFAF8]">
+      {/* Header Section */}
+      <section className="bg-[#1A1A18] py-24 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-px bg-[#C9A84C]" />
+            <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#C9A84C]">
+              أعمالنا
+            </span>
+          </div>
+
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-4 leading-tight">
+            مشاريعنا
+          </h1>
+
+          <p className="text-white/60 text-lg md:text-xl max-w-2xl leading-relaxed">
+            استكشف أحدث إنجازاتنا المعمارية والمشاريع المكتملة التي تعكس الجودة،
+            الإبداع، والدقة في التنفيذ.
+          </p>
+        </div>
+      </section>
+
       {/* Projects Section */}
-      <section id="projects" className="py-16 md:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Page Title */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              المشاريع
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              استكشف أحدث إنجازاتنا المعمارية والمشاريع المكتملة
-            </p>
-          </div>
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {projects.length === 0 ? (
+            <div className="text-center py-24">
+              <h2 className="text-2xl font-bold text-[#1A1A18] mb-3">
+                لا توجد مشاريع حالياً
+              </h2>
+              <p className="text-[#6B6860]">
+                سيتم إضافة المشاريع الجديدة قريباً
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Results Count */}
+              <div className="flex items-center justify-between mb-10">
+                <h2 className="text-2xl font-bold text-[#1A1A18]">
+                  جميع المشاريع
+                </h2>
 
-          {/* Projects Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
+                <span className="text-sm text-[#6B6860] font-medium">
+                  {projects.length} مشروع
+                </span>
+              </div>
 
+              {/* Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {projects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </section>
     </div>

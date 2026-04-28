@@ -1,143 +1,34 @@
-'use client'
+import Link from "next/link";
+import Image from "next/image";
+import { MapPin, Calendar, ArrowRight, MessageCircle } from "lucide-react";
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link';
-import Image from 'next/image';
-import { MapPin, Calendar, ArrowRight, MessageCircle } from 'lucide-react';
-import ProjectGallery from '@/components/ProjectGallery';
-import ProjectCard from '@/components/ProjectCard';
-import { supabase } from '@/lib/supabaseClient'
-import { Project } from '@/types'
+import ProjectCard from "@/components/ProjectCard";
+import { getProject, getRelatedProjects } from "@/lib/data-fetching";
 
-interface ProjectDetailPageProps {
-  params: Promise<{
-    id: string;
-  }>;
+interface Props {
+  params: Promise<{ id: string }>;
 }
 
-/**
- * Project Detail Page
- * Displays detailed information about a specific project
- */
-export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
-  const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [projectId, setProjectId] = useState<string>('')
-  const [relatedProjects, setRelatedProjects] = useState<Project[]>([])
+export default async function ProjectDetailPage({ params }: Props) {
+  const { id } = await params;
 
-  useEffect(() => {
-    const getProjectId = async () => {
-      const { id } = await params
-      setProjectId(id)
-      fetchProject(id)
-    }
-    getProjectId()
-  }, [params])
+  const project = await getProject(id);
 
-  useEffect(() => {
-    if (projectId) {
-      fetchRelatedProjects().then(setRelatedProjects)
-    }
-  }, [projectId])
-
-  const fetchProject = async (id: string) => {
-    try {
-      setLoading(true)
-      
-      // Fetch project with images
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          project_images (
-            image_url,
-            is_cover
-          )
-        `)
-        .eq('id', id)
-        .single()
-
-      if (projectError) throw projectError
-
-      if (!projectData) {
-        setError('المشروع غير موجود')
-        return
-      }
-
-      // Transform data to match expected format
-      const coverImage = projectData.project_images?.find((img: any) => img.is_cover)?.image_url || projectData.cover_image
-      const allImages = projectData.project_images?.map((img: any) => img.image_url) || []
-      
-      const transformedProject: Project = {
-        id: projectData.id,
-        title: projectData.title,
-        description: projectData.description,
-        location: projectData.location,
-        year: projectData.year,
-        category: 'residential' as const, // Default category
-        image: coverImage,
-        gallery: allImages,
-        scope_of_work: projectData.scope_of_work
-      }
-
-      setProject(transformedProject)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في جلب تفاصيل المشروع')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchRelatedProjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .neq('id', projectId)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-      if (error) throw error
-
-      return data?.map(project => {
-        const coverImage = project.cover_image
-        return {
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          location: project.location,
-          year: project.year,
-          category: 'residential' as const,
-          image: coverImage,
-          gallery: [coverImage].filter(Boolean)
-        }
-      }) || []
-    } catch (err) {
-      console.error('Failed to fetch related projects:', err)
-      return []
-    }
-  }
-
-  if (loading) {
+  if (!project) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
-  }
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8] text-center px-4">
+        <div>
+          <h1 className="text-3xl font-black text-[#1A1A18] mb-3">
+            المشروع غير موجود
+          </h1>
 
-  if (error || !project) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">المشروع غير موجود</h1>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-[#6B6860] mb-8">
             المشروع الذي تبحث عنه غير موجود.
           </p>
+
           <Link
             href="/projects"
-            className="inline-block bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+            className="inline-block px-7 py-3.5 bg-[#7A1A24] text-white font-bold rounded-xl hover:bg-[#5C1019] transition-colors"
           >
             العودة إلى المشاريع
           </Link>
@@ -146,162 +37,219 @@ export default function ProjectDetailPage({ params }: ProjectDetailPageProps) {
     );
   }
 
+  const relatedProjects = await getRelatedProjects(id);
+  const images = project.gallery?.filter(Boolean) || [];
+
   return (
-    <div className="min-h-screen">
-      {/* Project Details */}
-      <section className="py-16 md:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16 mb-32">
-            {/* Main Content */}
-            <div className="lg:col-span-2">
-              {/* Project Header */}
-              <div className="mb-12">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">{project.title}</h1>
-                <div className="flex items-center gap-4 text-muted-foreground mb-8">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5" />
-                    <span className="font-medium">{project.location}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    <span className="font-medium">{project.year}</span>
-                  </div>
-                </div>
-              </div>
+    <div className="min-h-screen bg-[#FAFAF8]">
+      {/* Hero */}
+      {project.image && (
+        <section className="relative h-[50vh] md:h-[65vh] bg-[#1A1A18] overflow-hidden">
+          <Image
+            src={project.image}
+            alt={project.title}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover opacity-70"
+          />
 
-              {/* Project Description */}
-              <div className="prose prose-lg max-w-none">
-                {/* <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">نظرة عامة على المشروع</h2> */}
-                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8">
-                  {project.description}
-                </p>
-              </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1A1A18] via-[#1A1A18]/30 to-transparent" />
 
-                          </div>
-
-            {/* Project Info Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-8">
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                  {/* Cover Image */}
-                  <div className="relative h-48 bg-gray-100">
-                    <Image
-                      src={project.image}
-                      alt={project.title}
-                      fill
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <h3 className="text-white font-bold text-xl">{project.title}</h3>
-                    </div>
-                  </div>
-                  
-                  {/* Project Details */}
-                  <div className="p-6 space-y-4">
-                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                      <span className="text-sm text-muted-foreground font-medium">الموقع</span>
-                      <span className="font-bold text-foreground">{project.location}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                      <span className="text-sm text-muted-foreground font-medium">السنة</span>
-                      <span className="font-bold text-foreground">{project.year}</span>
-                    </div>
-                    
-                    {/* Divider */}
-                    <div className="border-t border-gray-100 my-4"></div>
-                    
-                    {/* **Scope of Work** Section */}
-                    {project.scope_of_work && project.scope_of_work.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm text-muted-foreground font-medium mb-3">نوع العمل</h4>
-                        <ul className="space-y-2">
-                          {project.scope_of_work
-                            .join('+') // Convert array back to string
-                            .split(/[\+,\u2022]/) // Split by +, comma, or bullet
-                            .map((item: string) => item.trim())
-                            .filter((item: string) => item.length > 0)
-                            .map((item: string, index: number) => (
-                              <li key={index} className="flex items-start gap-2 text-sm text-foreground">
-                                <span className="text-primary mt-0.5">•</span>
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Navigation */}
-                <div className="mt-6">
-                  <Link
-                    href="/projects"
-                    className="inline-flex items-center justify-center w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-                  >
-                    <ArrowRight className="w-4 h-4 mr-2 rotate-180" />العودة للمشاريع</Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Gallery Section */}
-          <div className="mb-24">
-            <div className="mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">معرض صور المشروع</h2>
-              <p className="text-muted-foreground text-lg">استكشف جمال وتفاصيل المشروع من خلال معرض الصور</p>
-            </div>
-            <ProjectGallery images={project.gallery} title={project.title} />
-          </div>
-
-          {/* CTA Section */}
-          <div className="mb-24">
-            <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-8 md:p-12 border border-primary/20 text-center">
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">مهتم بهذا المشروع؟</h3>
-              <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-                تواصل معنا لمعرفة المزيد عن هذا المشروع أو لمناقشة مشروع مشابه لاحتياجاتك.
-              </p>
-              <a
-                href={`https://wa.me/201044088731?text=${encodeURIComponent(`السلام عليكم، أنا معجب بمشروع ${project.title} وحابب أعرف تفاصيل أكتر وإمكانية تنفيذ مشروع شبه ده.`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-              >
-                <MessageCircle className="w-5 h-5 mr-2" />
-                اسأل عن المشروع ده
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      {/* Related Projects */}
-      {relatedProjects.length > 0 && (
-        <section className="py-12 md:py-20 bg-secondary">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">مشاريع أخرى</h2>
-              <p className="text-muted-foreground text-lg">استكشف المزيد من مشاريعنا المتميزة</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-              {relatedProjects.map((relatedProject) => (
-                <ProjectCard key={relatedProject.id} project={relatedProject} />
-              ))}
-            </div>
-            <div className="text-center mt-12">
+          {/* Back Button */}
+          <div className="absolute top-6 inset-x-0 px-4 sm:px-8">
+            <div className="max-w-7xl mx-auto">
               <Link
                 href="/projects"
-                className="inline-flex items-center px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors duration-300 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors"
               >
-                عرض جميع المشاريع
-                <ArrowRight className="w-5 h-5 mr-2" />
+                <ArrowRight size={14} />
+                العودة إلى المشاريع
               </Link>
+            </div>
+          </div>
+
+          {/* Title */}
+          <div className="absolute bottom-0 inset-x-0 px-4 sm:px-8 pb-10">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-3xl md:text-5xl font-black text-white mb-4">
+                {project.title}
+              </h1>
+
+              <div className="flex flex-wrap items-center gap-5 text-white/70 text-sm">
+                {project.location && (
+                  <span className="flex items-center gap-2">
+                    <MapPin size={15} />
+                    {project.location}
+                  </span>
+                )}
+
+                {project.year && (
+                  <span className="flex items-center gap-2">
+                    <Calendar size={15} />
+                    {project.year}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </section>
       )}
 
-     
+      {/* Main Content */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            {/* Description */}
+            <div className="lg:col-span-2">
+              {!project.image && (
+                <h1 className="text-3xl font-black text-[#1A1A18] mb-6">
+                  {project.title}
+                </h1>
+              )}
+
+              {project.description && (
+                <>
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-px bg-[#7A1A24]" />
+                    <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                      نبذة عن المشروع
+                    </span>
+                  </div>
+
+                  <p className="text-[#6B6860] leading-loose text-lg">
+                    {project.description}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div>
+              <div className="sticky top-8 bg-white rounded-2xl border border-[#E2DDD6] shadow-sm overflow-hidden">
+                <div className="bg-[#7A1A24] px-6 py-4">
+                  <h3 className="text-white font-bold">تفاصيل المشروع</h3>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {project.location && (
+                    <InfoRow label="الموقع" value={project.location} />
+                  )}
+
+                  {project.year && (
+                    <InfoRow label="السنة" value={project.year.toString()} />
+                  )}
+
+                  {project.scope_of_work &&
+                    project.scope_of_work.length > 0 && (
+                      <div className="pt-2">
+                        <p className="text-xs text-[#6B6860] font-semibold uppercase tracking-wide mb-3">
+                          نوع العمل
+                        </p>
+
+                        <ul className="space-y-2">
+                          {project.scope_of_work.map((item, index) => (
+                            <li
+                              key={index}
+                              className="flex items-start gap-2 text-sm text-[#3A3A38]"
+                            >
+                              <span className="text-[#7A1A24] mt-0.5">•</span>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                </div>
+
+                <div className="px-6 pb-6">
+                  <a
+                    href={`https://wa.me/201044088731?text=${encodeURIComponent(
+                      `السلام عليكم، أنا مهتم بمشروع ${project.title} وأرغب في معرفة المزيد من التفاصيل.`,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-[#7A1A24] text-white font-bold rounded-xl hover:bg-[#5C1019] transition-colors text-sm"
+                  >
+                    <MessageCircle size={16} />
+                    استفسر عن المشروع
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Gallery */}
+          {images.length > 0 && (
+            <section className="mt-24">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-8 h-px bg-[#7A1A24]" />
+                <h2 className="text-2xl font-black text-[#1A1A18]">
+                  معرض صور المشروع
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {images.map((src, index) => (
+                  <div
+                    key={index}
+                    className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#EDEAE4]"
+                  >
+                    <Image
+                      src={src}
+                      alt={`${project.title} ${index + 1}`}
+                      fill
+                      sizes="(max-width:768px) 100vw, 33vw"
+                      className="object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </section>
+
+      {/* Related Projects */}
+      {relatedProjects.length > 0 && (
+        <section className="bg-[#F4F1EC] py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="w-8 h-px bg-[#7A1A24]" />
+              <h2 className="text-2xl font-black text-[#1A1A18]">
+                مشاريع أخرى
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {relatedProjects.map((item) => (
+                <ProjectCard key={item.id} project={item} />
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <Link
+                href="/projects"
+                className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#7A1A24] text-[#7A1A24] font-bold rounded-xl hover:bg-[#7A1A24] hover:text-white transition-all duration-300"
+              >
+                عرض جميع المشاريع
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-[#E2DDD6] last:border-0">
+      <span className="text-xs text-[#6B6860] font-semibold uppercase tracking-wide">
+        {label}
+      </span>
+
+      <span className="font-bold text-[#1A1A18] text-sm">{value}</span>
     </div>
   );
 }

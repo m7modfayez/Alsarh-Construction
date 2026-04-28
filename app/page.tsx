@@ -1,144 +1,108 @@
-'use client';
+import Hero from "@/components/Hero";
+import FullServiceCard from "@/components/FullServiceCard";
+import ProjectCard from "@/components/ProjectCard";
+import { statistics } from "@/data";
+import { ar } from "@/lib/ar-content";
+import { getFeaturedProjects } from "@/lib/data-fetching";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Hero from '@/components/Hero';
-import FullServiceCard from '@/components/FullServiceCard';
-import ServiceCard from '@/components/ServiceCard';
-import ProjectCard from '@/components/ProjectCard';
-import ContactForm from '@/components/ContactForm';
-import { services, statistics, teamMembers } from '@/data';
-import { ar } from '@/lib/ar-content';
-import { supabase } from '@/lib/supabaseClient';
-import { Project } from '@/types';
+// Revalidate every 60 s — new projects appear without a full redeploy
+export const revalidate = 60 * 5;
 
-/**
- * Home Page
- * Main landing page featuring hero, about, services, featured projects, team, and contact sections
- */
-export default function Home() {
-  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([])
-  const [projectsLoading, setProjectsLoading] = useState(true)
-
-  useEffect(() => {
-    fetchFeaturedProjects()
-  }, [])
-
-  const fetchFeaturedProjects = async () => {
-    try {
-      setProjectsLoading(true)
-      
-      // Fetch projects with their images
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          project_images (
-            image_url,
-            is_cover
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-      if (projectsError) throw projectsError
-
-      // Transform data to match expected format
-      const transformedProjects = projectsData?.map(project => {
-        const coverImage = project.project_images?.find((img: any) => img.is_cover)?.image_url || project.cover_image
-        const allImages = project.project_images?.map((img: any) => img.image_url) || []
-        
-        return {
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          location: project.location,
-          year: project.year,
-          category: 'residential' as const, // Default category
-          image: coverImage,
-          gallery: allImages
-        }
-      }) || []
-
-      setFeaturedProjects(transformedProjects)
-    } catch (err) {
-      console.error('Failed to fetch featured projects:', err)
-    } finally {
-      setProjectsLoading(false)
-    }
-  }
+export default async function Home() {
+  const featuredProjects = await getFeaturedProjects();
 
   return (
     <div className="min-h-screen">
+      {/* ── HERO ── */}
       <Hero />
 
-      {/* About Section */}
-      <section id="about" className="py-20 md:py-24 bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8">
-            
-            {/* Heading */}
-            <div className="space-y-4">
-              <h2 className="text-2xl md:text-4xl font-bold text-slate-900 leading-tight">
+      {/* ── ABOUT ── */}
+      <section id="about" className="py-24 bg-[#FAFAF8]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="section-divider" />
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                  من نحن
+                </span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18] leading-tight mb-6">
                 {ar.whoWeAre}
               </h2>
-              
-              {/* Short Intro */}
-              {/* <p className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
-                {ar.aboutDescription1.split('.')[0] + '.'}
-              </p> */}
-            </div>
-
-            {/* Main Paragraph */}
-            <div className="space-y-6">
-              <p 
-                className="text-gray-600 leading-relaxed max-w-xl mx-auto"
-                dangerouslySetInnerHTML={{ 
-                  __html: ar.aboutDescription1.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900 text-lg">$1</strong>') 
+              <p
+                className="text-[#6B6860] leading-relaxed mb-4"
+                dangerouslySetInnerHTML={{
+                  __html: ar.aboutDescription1.replace(
+                    /\*\*(.*?)\*\*/g,
+                    '<strong class="font-bold text-[#1A1A18]">$1</strong>',
+                  ),
                 }}
               />
-              
-              {/* Highlight Sentence */}
-              <p className="text-gray-600 leading-relaxed max-w-xl mx-auto font-medium">
+              <p className="text-[#6B6860] leading-relaxed mb-8">
                 {ar.aboutDescription2}
               </p>
+              <a
+                href={`https://wa.me/201044088731?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#7A1A24] text-white font-bold rounded-xl hover:bg-[#5C1019] transition-all duration-300 hover:shadow-lg hover:shadow-[#7A1A24]/25"
+              >
+                ابدأ محادثة معنا
+                <svg
+                  className="w-4 h-4 rtl:rotate-180"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </a>
             </div>
 
-            {/* Stats Section */}
-            <div className="mt-12">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {statistics.map((stat, index) => (
-                  <div key={index} className="bg-white rounded-xl shadow-md p-5 text-center hover:shadow-lg transition-shadow duration-300">
-                    <div className="text-2xl md:text-3xl font-bold text-blue-600 mb-2">
-                      {stat.number}
-                    </div>
-                    <div className="text-sm md:text-base text-gray-600 font-medium">
-                      {stat.label}
-                    </div>
+            <div className="grid grid-cols-2 gap-4">
+              {statistics.map((stat, i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#E2DDD6] rounded-2xl p-7 hover:border-[#7A1A24]/30 hover:shadow-lg transition-all duration-300"
+                >
+                  <div className="text-4xl font-black text-[#7A1A24] mb-2">
+                    {stat.number}
                   </div>
-                ))}
-              </div>
+                  <div className="text-sm text-[#6B6860] font-medium">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* Services Section */}
-      <section className="py-16 md:py-24 bg-background">
+      {/* ── SERVICES ── */}
+      <section id="services" className="py-24 bg-[#F4F1EC]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <div className="section-divider" />
+              <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                ما نقدمه
+              </span>
+              <div className="section-divider" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18] mb-3">
               {ar.ourServices}
             </h2>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-[#6B6860] max-w-xl mx-auto text-base">
               {ar.servicesSubtitle}
             </p>
           </div>
-          
-          {/* Full Service Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-16">
-            {/* Construction Service */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FullServiceCard
               icon="🏗️"
               title={ar.constructionServiceTitle}
@@ -147,8 +111,6 @@ export default function Home() {
               ctaText="ابدأ مشروعك"
               message={ar.constructionServiceMessage}
             />
-            
-            {/* Finishing Service */}
             <FullServiceCard
               icon="🎨"
               title={ar.finishingServiceTitle}
@@ -157,8 +119,6 @@ export default function Home() {
               ctaText="اطلب استشارة"
               message={ar.finishingServiceMessage}
             />
-            
-            {/* Turnkey Service */}
             <FullServiceCard
               icon="✨"
               title={ar.turnkeyServiceTitle}
@@ -172,36 +132,58 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Projects Section */}
-      <section id="projects" className="py-16 md:py-24 bg-secondary">
+      {/* ── FEATURED PROJECTS ── */}
+      <section id="projects" className="py-24 bg-[#FAFAF8]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              {ar.featuredProjects}
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              {ar.featuredProjectsSubtitle}
-            </p>
-          </div>
-          {projectsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              {[1, 2, 3].map((index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="bg-white rounded-xl shadow-md h-64"></div>
-                </div>
-              ))}
+          <div className="flex items-end justify-between mb-12">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="section-divider" />
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                  أعمالنا
+                </span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18]">
+                {ar.featuredProjects}
+              </h2>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <a
+              href="/projects"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-bold text-[#7A1A24] hover:gap-3 transition-all duration-200"
+            >
+              {ar.viewAllProjects}
+              <svg
+                className="w-4 h-4 rtl:rotate-180"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
+            </a>
+          </div>
+
+          {featuredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {featuredProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
             </div>
+          ) : (
+            <div className="text-center py-16 text-[#6B6860]">
+              لا توجد مشاريع حتى الآن
+            </div>
           )}
-          <div className="text-center">
+
+          <div className="sm:hidden text-center mt-8">
             <a
               href="/projects"
-              className="inline-block bg-primary text-primary-foreground px-8 py-3 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#7A1A24] text-[#7A1A24] font-bold rounded-xl hover:bg-[#7A1A24] hover:text-white transition-all duration-300"
             >
               {ar.viewAllProjects}
             </a>
@@ -209,117 +191,160 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Team Section */}
-      {/* <section className="py-16 md:py-24 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              {ar.ourTeam}
-            </h2>
-            <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-              {ar.ourTeamSubtitle}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            {teamMembers.map((member) => (
-              <article key={member.id} className="text-center">
-                <div className="w-20 h-20 md:w-24 md:h-24 mx-auto rounded-full bg-muted overflow-hidden mb-4 shadow-sm">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                  />
+      {/* ── WHY US ── */}
+      <section className="py-24 bg-[#1A1A18] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-px bg-[#C9A84C]" />
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#C9A84C]">
+                  لماذا الصرح
+                </span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black leading-tight mb-6">
+                شريكك الموثوق من أول خطوة لحد ما تستلم مشروعك
+              </h2>
+              <p className="text-white/60 leading-relaxed">
+                نلتزم بأعلى معايير الجودة والدقة في التنفيذ، مع ضمان التسليم في
+                الوقت المتفق عليه وضمن الميزانية المحددة.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                {
+                  icon: "🏆",
+                  title: "جودة مضمونة",
+                  desc: "أعلى معايير التنفيذ في كل مرحلة من مراحل المشروع",
+                },
+                {
+                  icon: "⏱️",
+                  title: "التزام بالمواعيد",
+                  desc: "تسليم مشروعك في الوقت المتفق عليه دون تأخير",
+                },
+                {
+                  icon: "💡",
+                  title: "حلول متكاملة",
+                  desc: "من التخطيط والتصميم حتى التشطيب والتسليم النهائي",
+                },
+                {
+                  icon: "🤝",
+                  title: "شفافية كاملة",
+                  desc: "تواصل مستمر وتقارير دورية طوال تنفيذ مشروعك",
+                },
+              ].map(({ icon, title, desc }) => (
+                <div
+                  key={title}
+                  className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/8 transition-colors duration-300"
+                >
+                  <div className="text-2xl mb-3">{icon}</div>
+                  <h4 className="font-bold text-white mb-1.5">{title}</h4>
+                  <p className="text-sm text-white/50 leading-relaxed">
+                    {desc}
+                  </p>
                 </div>
-                <h3 className="font-medium text-foreground text-sm md:text-base mb-1">{member.name}</h3>
-                <p className="text-xs md:text-sm text-muted-foreground">{member.title}</p>
-              </article>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </section> */}
+      </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="py-20 md:py-24 bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8">
-            
-            {/* Strong Headline */}
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 leading-tight">
-              {ar.contactHeadline}
-            </h2>
-            
-            {/* Supporting Text */}
-            <p 
-              className="text-lg md:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto"
-              dangerouslySetInnerHTML={{ 
-                __html: ar.contactSupportingText.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>') 
-              }}
-            />
-
-            {/* Single WhatsApp CTA Button */}
-            <div className="mt-10">
-              <a
-                href={`https://wa.me/201044088731?text=${encodeURIComponent('مرحبًا، حابب أبدأ مشروع وعايز مساعدة في البناء أو التشطيب لحد ما يبقى جاهز بالكامل.')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 min-w-[250px]"
-              >
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.52 3.44C18.9 1.86 16.76 1 14.36 1 7.65 1 2.20 6.5 2.20 13.21c0 2.01.55 3.98 1.58 5.71L2 23l6.3-1.61c1.65.9 3.52 1.38 5.41 1.38 6.71 0 12.15-5.45 12.15-12.15 0-3.24-1.31-6.3-3.74-8.58zm-6.16 18.48c-1.68 0-3.33-.44-4.79-1.26l-.34-.2-3.56.91.93-3.39-.22-.36c-1.00-1.58-1.53-3.39-1.53-5.28 0-5.58 4.53-10.11 10.11-10.11 2.70 0 5.23 1.05 7.14 2.96 1.91 1.91 2.96 4.44 2.96 7.14 0 5.58-4.53 10.11-10.11 10.11zm5.50-7.51c-.30-.15-1.76-.87-2.03-.97-.27-.10-.47-.15-.67.15-.20.30-.77.97-.94 1.17-.17.20-.34.22-.64.07-.30-.15-1.26-.46-2.39-1.48-.88-.79-1.48-1.76-1.66-2.06-.17-.30-.02-.46.13-.61.13-.13.30-.35.45-.52.15-.17.20-.30.30-.50.10-.20.05-.37-.025-.52-.075-.15-.67-1.62-.92-2.21-.24-.58-.49-.50-.67-.51-.17-.01-.37-.01-.57-.01-.20 0-.52.075-.79.375-.27.30-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.20 2.10 3.20 5.08 4.49.71.30 1.26.48 1.69.62.71.23 1.36.20 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.18-1.41-.07-.12-.27-.20-.57-.35z"/>
-                </svg>
-                {ar.primaryCTA}
-              </a>
-            </div>
-
-          </div>
-
-          {/* Secondary Contact Info */}
-          <div className="mt-16 pt-8 border-t border-gray-200">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700 mb-6">{ar.contactInfoSecondary}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
-                
-                {/* Phone */}
-                <div>
-                  <div className="font-medium text-gray-600 mb-1">{ar.phone}</div>
-                  <a href="tel:01019499997" className="text-primary hover:text-primary/80 transition-colors">
-                    01019499997
-                  </a>
+      {/* ── CONTACT ── */}
+      <section id="contact" className="py-24 bg-[#F4F1EC]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-3xl border border-[#E2DDD6] overflow-hidden shadow-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-2">
+              <div className="bg-[#7A1A24] p-10 md:p-14 flex flex-col justify-center">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-px bg-[#C9A84C]" />
+                  <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#C9A84C]">
+                    تواصل معنا
+                  </span>
                 </div>
-
-                {/* Email */}
-                <div>
-                  <div className="font-medium text-gray-600 mb-1">{ar.email}</div>
-                  <a href="mailto:Alsarahconstuction2022@gmail.com" className="text-primary hover:text-primary/80 transition-colors">
-                    Alsarahconstuction2022
-                  </a>
-                </div>
-
-                {/* Address */}
-                <div>
-                  <div className="font-medium text-gray-600 mb-1">{ar.address}</div>
-                  <a 
-                    href="https://maps.app.goo.gl/wmzUrrBZnPMssx4t7" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-primary/80 transition-colors"
+                <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-4">
+                  {ar.contactHeadline}
+                </h2>
+                <p
+                  className="text-white/70 leading-relaxed mb-10"
+                  dangerouslySetInnerHTML={{
+                    __html: ar.contactSupportingText.replace(
+                      /\*\*(.*?)\*\*/g,
+                      '<strong class="text-white font-bold">$1</strong>',
+                    ),
+                  }}
+                />
+                <a
+                  href={`https://wa.me/201044088731?text=${encodeURIComponent("مرحبًا، حابب أبدأ مشروع وعايز مساعدة في البناء أو التشطيب لحد ما يبقى جاهز بالكامل.")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="self-start inline-flex items-center gap-3 px-8 py-4 bg-white text-[#7A1A24] font-bold rounded-xl hover:bg-[#F4F1EC] transition-all duration-300 hover:shadow-lg text-base"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
-                    6 October, Gamal Abdel Nasser Axis
-                  </a>
-                </div>
+                    <path d="M20.52 3.44C18.9 1.86 16.76 1 14.36 1 7.65 1 2.20 6.5 2.20 13.21c0 2.01.55 3.98 1.58 5.71L2 23l6.3-1.61c1.65.9 3.52 1.38 5.41 1.38 6.71 0 12.15-5.45 12.15-12.15 0-3.24-1.31-6.3-3.74-8.58z" />
+                  </svg>
+                  {ar.primaryCTA}
+                </a>
+              </div>
 
-                {/* Hours */}
-                <div>
-                  <div className="font-medium text-gray-600 mb-1">{ar.businessHours}</div>
-                  <div className="text-gray-500">
-                    {ar.businessHoursValue}
+              <div className="p-10 md:p-14 flex flex-col justify-center gap-6">
+                <h3 className="text-lg font-black text-[#1A1A18] mb-2">
+                  {ar.contactInfoSecondary}
+                </h3>
+                {[
+                  {
+                    label: ar.phone,
+                    value: "01019499997",
+                    href: "tel:01019499997",
+                  },
+                  {
+                    label: ar.email,
+                    value: "Alsarahconstuction2022@gmail.com",
+                    href: "mailto:Alsarahconstuction2022@gmail.com",
+                  },
+                  {
+                    label: ar.address,
+                    value: "6 أكتوبر، محور جمال عبد الناصر",
+                    href: "https://maps.app.goo.gl/wmzUrrBZnPMssx4t7",
+                  },
+                  {
+                    label: ar.businessHours,
+                    value: ar.businessHoursValue,
+                    href: null,
+                  },
+                ].map(({ label, value, href }) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-1 border-b border-[#E2DDD6] pb-5 last:border-0 last:pb-0"
+                  >
+                    <span className="text-xs font-semibold text-[#7A1A24] uppercase tracking-wider">
+                      {label}
+                    </span>
+                    {href ? (
+                      <a
+                        href={href}
+                        target={href.startsWith("http") ? "_blank" : undefined}
+                        rel={
+                          href.startsWith("http")
+                            ? "noopener noreferrer"
+                            : undefined
+                        }
+                        className="text-sm font-medium text-[#1A1A18] hover:text-[#7A1A24] transition-colors"
+                      >
+                        {value}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-[#6B6860]">{value}</span>
+                    )}
                   </div>
-                </div>
-
+                ))}
               </div>
             </div>
           </div>
-
         </div>
       </section>
     </div>

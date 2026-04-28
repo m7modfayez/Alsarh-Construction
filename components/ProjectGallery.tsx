@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { ProjectGalleryProps } from '@/types';
+import { useState } from "react";
+import Image from "next/image";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ProjectGalleryProps } from "@/types";
 
 /**
  * Project Gallery Component
@@ -14,21 +14,25 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
 
   const handlePrevious = () => {
     if (selectedIndex !== null) {
-      setSelectedIndex(selectedIndex === 0 ? images.length - 1 : selectedIndex - 1);
+      setSelectedIndex(
+        selectedIndex === 0 ? images.length - 1 : selectedIndex - 1,
+      );
     }
   };
 
   const handleNext = () => {
     if (selectedIndex !== null) {
-      setSelectedIndex(selectedIndex === images.length - 1 ? 0 : selectedIndex + 1);
+      setSelectedIndex(
+        selectedIndex === images.length - 1 ? 0 : selectedIndex + 1,
+      );
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (selectedIndex === null) return;
-    if (e.key === 'ArrowLeft') handlePrevious();
-    if (e.key === 'ArrowRight') handleNext();
-    if (e.key === 'Escape') setSelectedIndex(null);
+    if (e.key === "ArrowLeft") handlePrevious();
+    if (e.key === "ArrowRight") handleNext();
+    if (e.key === "Escape") setSelectedIndex(null);
   };
 
   return (
@@ -43,8 +47,8 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
             aria-label={`View ${title} image ${index + 1}`}
           >
             <Image
-              src={image}
               alt={`${title} - Image ${index + 1}`}
+              src={image}
               fill
               className="object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -60,7 +64,7 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
           className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setSelectedIndex(null)}
         >
-          <div 
+          <div
             className="relative max-w-6xl w-full max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
@@ -117,9 +121,9 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
                     key={index}
                     onClick={() => setSelectedIndex(index)}
                     className={`w-12 h-12 rounded-lg overflow-hidden transition-all duration-200 ${
-                      index === selectedIndex 
-                        ? 'ring-2 ring-white ring-offset-2 ring-offset-black' 
-                        : 'opacity-60 hover:opacity-100'
+                      index === selectedIndex
+                        ? "ring-2 ring-white ring-offset-2 ring-offset-black"
+                        : "opacity-60 hover:opacity-100"
                     }`}
                     aria-label={`Go to image ${index + 1}`}
                   >
