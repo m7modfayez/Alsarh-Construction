@@ -1,9 +1,6 @@
 import { Project } from "@/types";
 import { supabaseServer } from "./supabaseserver";
 
-/**
- * Shared helper: transforms a raw Supabase project row into the Project type.
- */
 function transformProject(raw: any): Project {
   const coverImage =
     raw.project_images?.find((img: any) => img.is_cover)?.image_url ||
@@ -43,9 +40,53 @@ export async function getFeaturedProjects(): Promise<Project[]> {
   return (data ?? []).map(transformProject);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROJECTS PAGE — all projects, lean select (no full gallery needed)
-// ─────────────────────────────────────────────────────────────────────────────
+export interface PaginatedProjectsResult {
+  projects: Project[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+const DEFAULT_PAGE_SIZE = 6;
+
+export async function getPaginatedProjects(
+  page: number = 1,
+  pageSize: number = DEFAULT_PAGE_SIZE,
+): Promise<PaginatedProjectsResult> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const [{ data, error }, { count }] = await Promise.all([
+    supabaseServer
+      .from("projects")
+      .select(
+        `id, title, description, location, year, cover_image,
+         project_images(image_url, is_cover)`,
+        { count: "exact" },
+      )
+      .order("created_at", { ascending: false })
+      .range(from, to),
+    supabaseServer.from("projects").select("*", { count: "exact", head: true }),
+  ]);
+
+  if (error) {
+    console.error("[getPaginatedProjects]", error.message);
+    return { projects: [], totalCount: 0, page: 1, pageSize, totalPages: 0 };
+  }
+
+  const totalCount = count ?? 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  return {
+    projects: (data ?? []).map(transformProject),
+    totalCount,
+    page,
+    pageSize,
+    totalPages,
+  };
+}
+
 export async function getAllProjects(): Promise<Project[]> {
   const { data, error } = await supabaseServer
     .from("projects")
@@ -81,9 +122,6 @@ export async function getProject(id: string): Promise<Project | null> {
   return data ? transformProject(data) : null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RELATED PROJECTS — 3 projects excluding the current one
-// ─────────────────────────────────────────────────────────────────────────────
 export async function getRelatedProjects(
   excludeId: string,
 ): Promise<Project[]> {

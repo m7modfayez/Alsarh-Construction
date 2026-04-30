@@ -1,5 +1,6 @@
 import ProjectCard from "@/components/ProjectCard";
-import { getAllProjects } from "@/lib/data-fetching";
+import Pagination from "@/components/Pagination";
+import { getPaginatedProjects } from "@/lib/data-fetching";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,8 +9,14 @@ export const metadata: Metadata = {
     "استكشف أحدث مشاريعنا المعمارية والإنشائية، من التصميم إلى التنفيذ بأعلى معايير الجودة والاحترافية.",
 };
 
-export default async function ProjectsPage() {
-  const projects = await getAllProjects();
+interface Props {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function ProjectsPage({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams;
+  const page = parseInt(resolvedSearchParams.page ?? "1", 10);
+  const { projects, totalCount, pageSize, totalPages } = await getPaginatedProjects(page);
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
@@ -55,7 +62,7 @@ export default async function ProjectsPage() {
                 </h2>
 
                 <span className="text-sm text-[#6B6860] font-medium">
-                  {projects.length} مشروع
+                  {totalCount} مشروع
                 </span>
               </div>
 
@@ -65,6 +72,17 @@ export default async function ProjectsPage() {
                   <ProjectCard key={project.id} project={project} />
                 ))}
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-16">
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    baseUrl="/projects"
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
