@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { ar } from "@/lib/ar-content";
 
 export default function Navbar() {
@@ -29,12 +29,12 @@ export default function Navbar() {
     <nav
       className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/95 backdrop-blur-md shadow-md border-b border-[#E2DDD6]"
-          : "bg-white border-b border-[#E2DDD6]"
+          ? "bg-white/90 backdrop-blur-xl shadow-sm border-b border-[#e7e5e4]"
+          : "bg-transparent"
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-[70px]">
+        <div className="flex justify-between items-center h-[72px]">
           {/* Logo */}
           <Link
             href="/"
@@ -53,24 +53,23 @@ export default function Navbar() {
               priority
               className="h-11 w-auto object-contain"
             />
-            <span className="hidden sm:block font-bold text-lg text-[#1A1A18] leading-tight">
+            <span className="hidden sm:block font-bold text-lg text-[#0c0a09] leading-tight">
               الصرح
-              <span className="block text-[10px] font-normal text-[#6B6860] tracking-widest uppercase">
+              <span className="block text-[10px] font-normal text-[#78716c] tracking-widest uppercase">
                 Construction
               </span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-2">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="relative px-4 py-2 text-sm font-semibold text-[#3A3A38] hover:text-[#7A1A24] transition-colors duration-200 group"
+                className="relative px-4 py-2 text-sm font-medium text-[#57534e] hover:text-[#0f172a] transition-colors duration-200"
               >
                 {link.label}
-                <span className="absolute bottom-0 right-4 left-4 h-0.5 bg-[#7A1A24] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-right rounded-full" />
               </Link>
             ))}
           </div>
@@ -78,18 +77,19 @@ export default function Navbar() {
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
             <a
-              href="tel:01019499997"
-              className="flex items-center gap-2 text-sm font-medium text-[#6B6860] hover:text-[#7A1A24] transition-colors"
-            >
-              <Phone size={15} />
-              <span>01019499997</span>
-            </a>
-            <a
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7A1A24] hover:bg-[#5C1019] text-white text-sm font-bold rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-[#7A1A24]/20"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0f172a] hover:bg-[#1e293b] text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg"
             >
+              <svg
+                className="w-4 h-4"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M20.52 3.44C18.9 1.86 16.76 1 14.36 1 7.65 1 2.20 6.5 2.20 13.21c0 2.01.55 3.98 1.58 5.71L2 23l6.3-1.61c1.65.9 3.52 1.38 5.41 1.38 6.71 0 12.15-5.45 12.15-12.15 0-3.24-1.31-6.3-3.74-8.58z" />
+              </svg>
               ابدأ مشروعك
             </a>
           </div>
@@ -97,7 +97,7 @@ export default function Navbar() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-[#3A3A38] hover:bg-[#F4F1EC] transition-colors"
+            className="md:hidden p-2 rounded-lg text-[#57534e] hover:bg-[#f5f5f4] transition-colors"
             aria-label="القائمة"
           >
             {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -107,24 +107,24 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-[#E2DDD6] bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-4 space-y-1">
+        <div className="md:hidden border-t border-[#e7e5e4] bg-white">
+          <div className="max-w-7xl mx-auto px-4 py-5 space-y-2">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block px-4 py-3 rounded-lg text-base font-semibold text-[#3A3A38] hover:bg-[#F4F1EC] hover:text-[#7A1A24] transition-colors"
+                className="block px-4 py-3 rounded-lg text-base font-medium text-[#57534e] hover:bg-[#f5f5f4] hover:text-[#0f172a] transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-[#E2DDD6] mt-2">
+            <div className="pt-4 mt-2">
               <a
                 href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center w-full px-4 py-3 bg-[#7A1A24] text-white font-bold rounded-lg"
+                className="flex items-center justify-center w-full px-4 py-3 bg-[#0f172a] text-white font-medium rounded-lg"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 ابدأ مشروعك الآن

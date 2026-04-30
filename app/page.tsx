@@ -17,36 +17,36 @@ export default async function Home() {
       <Hero />
 
       {/* ── ABOUT ── */}
-      <section id="about" className="py-24 bg-[#FAFAF8]">
+      <section id="about" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="flex items-center gap-3 mb-5">
                 <div className="section-divider" />
-                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#d97706]">
                   من نحن
                 </span>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18] leading-tight mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#0c0a09] leading-tight mb-6">
                 {ar.whoWeAre}
               </h2>
               <p
-                className="text-[#6B6860] leading-relaxed mb-4"
+                className="text-[#78716c] leading-relaxed mb-4"
                 dangerouslySetInnerHTML={{
                   __html: ar.aboutDescription1.replace(
                     /\*\*(.*?)\*\*/g,
-                    '<strong class="font-bold text-[#1A1A18]">$1</strong>',
+                    '<strong class="font-bold text-[#0c0a09]">$1</strong>',
                   ),
                 }}
               />
-              <p className="text-[#6B6860] leading-relaxed mb-8">
+              <p className="text-[#78716c] leading-relaxed mb-8">
                 {ar.aboutDescription2}
               </p>
               <a
                 href={`https://wa.me/201044088731?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#7A1A24] text-white font-bold rounded-xl hover:bg-[#5C1019] transition-all duration-300 hover:shadow-lg hover:shadow-[#7A1A24]/25"
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#0f172a] text-white font-semibold rounded-xl hover:bg-[#1e293b] transition-all duration-300 hover:shadow-xl"
               >
                 ابدأ محادثة معنا
                 <svg
@@ -69,12 +69,12 @@ export default async function Home() {
               {statistics.map((stat, i) => (
                 <div
                   key={i}
-                  className="bg-white border border-[#E2DDD6] rounded-2xl p-7 hover:border-[#7A1A24]/30 hover:shadow-lg transition-all duration-300"
+                  className="bg-[#f5f5f4] border border-[#e7e5e4] rounded-2xl p-7 hover:border-[#d97706]/30 hover:shadow-lg transition-all duration-300"
                 >
-                  <div className="text-4xl font-black text-[#7A1A24] mb-2">
+                  <div className="text-4xl font-bold text-[#0f172a] mb-2">
                     {stat.number}
                   </div>
-                  <div className="text-sm text-[#6B6860] font-medium">
+                  <div className="text-sm text-[#78716c] font-medium">
                     {stat.label}
                   </div>
                 </div>
@@ -85,20 +85,28 @@ export default async function Home() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="services" className="py-24 bg-[#F4F1EC]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-3 mb-4">
+      <section id="services" className="py-28 bg-[#fafaf9] relative overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-[0.02]">
+          <div className="w-full h-full" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, #0c0a09 1px, transparent 0)`,
+            backgroundSize: '32px 32px'
+          }}/>
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-3 mb-5">
               <div className="section-divider" />
-              <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+              <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#d97706]">
                 ما نقدمه
               </span>
               <div className="section-divider" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18] mb-3">
+            <h2 className="text-4xl md:text-5xl font-bold text-[#0c0a09] mb-5 tracking-tight">
               {ar.ourServices}
             </h2>
-            <p className="text-[#6B6860] max-w-xl mx-auto text-base">
+            <p className="text-[#78716c] max-w-2xl mx-auto text-lg leading-relaxed">
               {ar.servicesSubtitle}
             </p>
           </div>
@@ -133,23 +141,23 @@ export default async function Home() {
       </section>
 
       {/* ── FEATURED PROJECTS ── */}
-      <section id="projects" className="py-24 bg-[#FAFAF8]">
+      <section id="projects" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-12">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <div className="section-divider" />
-                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#7A1A24]">
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#d97706]">
                   أعمالنا
                 </span>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black text-[#1A1A18]">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#0c0a09]">
                 {ar.featuredProjects}
               </h2>
             </div>
             <a
               href="/projects"
-              className="hidden sm:inline-flex items-center gap-2 text-sm font-bold text-[#7A1A24] hover:gap-3 transition-all duration-200"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-[#d97706] hover:gap-3 transition-all duration-200"
             >
               {ar.viewAllProjects}
               <svg
@@ -183,7 +191,7 @@ export default async function Home() {
           <div className="sm:hidden text-center mt-8">
             <a
               href="/projects"
-              className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#7A1A24] text-[#7A1A24] font-bold rounded-xl hover:bg-[#7A1A24] hover:text-white transition-all duration-300"
+              className="inline-flex items-center gap-2 px-7 py-3.5 border border-[#0f172a] text-[#0f172a] font-medium rounded-xl hover:bg-[#0f172a] hover:text-white transition-all duration-300"
             >
               {ar.viewAllProjects}
             </a>
@@ -192,20 +200,20 @@ export default async function Home() {
       </section>
 
       {/* ── WHY US ── */}
-      <section className="py-24 bg-[#1A1A18] text-white">
+      <section className="py-24 bg-[#0c0a09] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-8 h-px bg-[#C9A84C]" />
-                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#C9A84C]">
+                <div className="section-divider-light" />
+                <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#d97706]">
                   لماذا الصرح
                 </span>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black leading-tight mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold leading-tight mb-6">
                 شريكك الموثوق من أول خطوة لحد ما تستلم مشروعك
               </h2>
-              <p className="text-white/60 leading-relaxed">
+              <p className="text-white/50 leading-relaxed">
                 نلتزم بأعلى معايير الجودة والدقة في التنفيذ، مع ضمان التسليم في
                 الوقت المتفق عليه وضمن الميزانية المحددة.
               </p>
@@ -235,11 +243,11 @@ export default async function Home() {
               ].map(({ icon, title, desc }) => (
                 <div
                   key={title}
-                  className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/8 transition-colors duration-300"
+                  className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 hover:bg-white/[0.06] hover:border-white/[0.1] transition-colors duration-300"
                 >
                   <div className="text-2xl mb-3">{icon}</div>
-                  <h4 className="font-bold text-white mb-1.5">{title}</h4>
-                  <p className="text-sm text-white/50 leading-relaxed">
+                  <h4 className="font-semibold text-white mb-1.5">{title}</h4>
+                  <p className="text-sm text-white/40 leading-relaxed">
                     {desc}
                   </p>
                 </div>
@@ -250,26 +258,26 @@ export default async function Home() {
       </section>
 
       {/* ── CONTACT ── */}
-      <section id="contact" className="py-24 bg-[#F4F1EC]">
+      <section id="contact" className="py-24 bg-[#f5f5f4]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-3xl border border-[#E2DDD6] overflow-hidden shadow-sm">
+          <div className="bg-white rounded-3xl border border-[#e7e5e4] overflow-hidden shadow-sm">
             <div className="grid grid-cols-1 lg:grid-cols-2">
-              <div className="bg-[#7A1A24] p-10 md:p-14 flex flex-col justify-center">
+              <div className="bg-[#0f172a] p-10 md:p-14 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-px bg-[#C9A84C]" />
-                  <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#C9A84C]">
+                  <div className="section-divider-light" />
+                  <span className="text-xs font-semibold tracking-[0.2em] uppercase text-[#d97706]">
                     تواصل معنا
                   </span>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-4">
+                <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4">
                   {ar.contactHeadline}
                 </h2>
                 <p
-                  className="text-white/70 leading-relaxed mb-10"
+                  className="text-white/50 leading-relaxed mb-10"
                   dangerouslySetInnerHTML={{
                     __html: ar.contactSupportingText.replace(
                       /\*\*(.*?)\*\*/g,
-                      '<strong class="text-white font-bold">$1</strong>',
+                      '<strong class="text-white font-semibold">$1</strong>',
                     ),
                   }}
                 />
@@ -277,7 +285,7 @@ export default async function Home() {
                   href={`https://wa.me/201044088731?text=${encodeURIComponent("مرحبًا، حابب أبدأ مشروع وعايز مساعدة في البناء أو التشطيب لحد ما يبقى جاهز بالكامل.")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="self-start inline-flex items-center gap-3 px-8 py-4 bg-white text-[#7A1A24] font-bold rounded-xl hover:bg-[#F4F1EC] transition-all duration-300 hover:shadow-lg text-base"
+                  className="self-start inline-flex items-center gap-3 px-8 py-4 bg-[#d97706] text-white font-semibold rounded-xl hover:bg-[#b45309] transition-all duration-300 hover:shadow-xl text-base"
                 >
                   <svg
                     className="w-5 h-5"
@@ -292,7 +300,7 @@ export default async function Home() {
               </div>
 
               <div className="p-10 md:p-14 flex flex-col justify-center gap-6">
-                <h3 className="text-lg font-black text-[#1A1A18] mb-2">
+                <h3 className="text-lg font-bold text-[#0c0a09] mb-2">
                   {ar.contactInfoSecondary}
                 </h3>
                 {[
@@ -319,9 +327,9 @@ export default async function Home() {
                 ].map(({ label, value, href }) => (
                   <div
                     key={label}
-                    className="flex flex-col gap-1 border-b border-[#E2DDD6] pb-5 last:border-0 last:pb-0"
+                    className="flex flex-col gap-1 border-b border-[#e7e5e4] pb-5 last:border-0 last:pb-0"
                   >
-                    <span className="text-xs font-semibold text-[#7A1A24] uppercase tracking-wider">
+                    <span className="text-xs font-semibold text-[#d97706] uppercase tracking-wider">
                       {label}
                     </span>
                     {href ? (
@@ -333,12 +341,12 @@ export default async function Home() {
                             ? "noopener noreferrer"
                             : undefined
                         }
-                        className="text-sm font-medium text-[#1A1A18] hover:text-[#7A1A24] transition-colors"
+                        className="text-sm font-medium text-[#0c0a09] hover:text-[#d97706] transition-colors"
                       >
                         {value}
                       </a>
                     ) : (
-                      <span className="text-sm text-[#6B6860]">{value}</span>
+                      <span className="text-sm text-[#78716c]">{value}</span>
                     )}
                   </div>
                 ))}

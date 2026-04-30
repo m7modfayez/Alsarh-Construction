@@ -10,15 +10,15 @@ export default function Footer() {
   const whatsappHref = `https://wa.me/201044088731?text=${encodeURIComponent("مرحبًا، أرغب في الاستفسار عن خدماتكم.")}`;
 
   return (
-    <footer className="bg-[#110E0D] text-white">
+    <footer className="bg-[#0c0a09] text-white">
       {/* CTA Banner */}
-      <div className="bg-[#7A1A24] border-b border-[#C9A84C]/20">
+      <div className="bg-[#0f172a] border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <h3 className="text-xl font-black text-white mb-1">
+            <h3 className="text-xl font-bold text-white mb-1">
               هل أنت مستعد لبدء مشروعك؟
             </h3>
-            <p className="text-white/70 text-sm">
+            <p className="text-white/50 text-sm">
               تواصل معنا اليوم للحصول على استشارة مجانية
             </p>
           </div>
@@ -26,7 +26,7 @@ export default function Footer() {
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-2.5 px-7 py-3.5 bg-white text-[#7A1A24] font-bold rounded-xl hover:bg-[#F4F1EC] transition-colors duration-200 text-sm"
+            className="shrink-0 inline-flex items-center gap-2.5 px-7 py-3.5 bg-[#d97706] text-white font-semibold rounded-xl hover:bg-[#b45309] transition-colors duration-200 text-sm"
           >
             <svg
               className="w-5 h-5"
@@ -64,7 +64,7 @@ export default function Footer() {
                 href="https://www.facebook.com/profile.php?id=100063493883464"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/8 hover:bg-[#7A1A24] transition-colors duration-200"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-[#d97706] transition-colors duration-200"
                 aria-label="فيسبوك"
               >
                 <Facebook size={16} />
@@ -73,7 +73,7 @@ export default function Footer() {
                 href="https://www.instagram.com/alsarhconstruction4"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/8 hover:bg-[#7A1A24] transition-colors duration-200"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-[#d97706] transition-colors duration-200"
                 aria-label="إنستغرام"
               >
                 <Instagram size={16} />
@@ -83,7 +83,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-bold text-sm tracking-widest uppercase text-[#C9A84C] mb-5">
+            <h4 className="font-semibold text-sm tracking-widest uppercase text-[#d97706] mb-5">
               روابط سريعة
             </h4>
             <ul className="space-y-3">
@@ -96,9 +96,9 @@ export default function Footer() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="text-sm text-white/55 hover:text-white transition-colors duration-200 flex items-center gap-2 group"
+                    className="text-sm text-white/40 hover:text-white transition-colors duration-200 flex items-center gap-2 group"
                   >
-                    <span className="w-0 group-hover:w-3 h-px bg-[#C9A84C] transition-all duration-300" />
+                    <span className="w-0 group-hover:w-3 h-px bg-[#d97706] transition-all duration-300" />
                     {label}
                   </Link>
                 </li>
@@ -108,25 +108,25 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-bold text-sm tracking-widest uppercase text-[#C9A84C] mb-5">
+            <h4 className="font-semibold text-sm tracking-widest uppercase text-[#d97706] mb-5">
               تواصل معنا
             </h4>
             <ul className="space-y-4">
               <li>
                 <a
                   href="tel:+201019499997"
-                  className="flex items-start gap-3 text-sm text-white/55 hover:text-white transition-colors"
+                  className="flex items-start gap-3 text-sm text-white/40 hover:text-white transition-colors"
                 >
-                  <Phone size={15} className="mt-0.5 shrink-0 text-[#7A1A24]" />
+                  <Phone size={15} className="mt-0.5 shrink-0 text-[#d97706]" />
                   01019499997
                 </a>
               </li>
               <li>
                 <a
                   href="mailto:Alsarahconstuction2022@gmail.com"
-                  className="flex items-start gap-3 text-sm text-white/55 hover:text-white transition-colors"
+                  className="flex items-start gap-3 text-sm text-white/40 hover:text-white transition-colors"
                 >
-                  <Mail size={15} className="mt-0.5 shrink-0 text-[#7A1A24]" />
+                  <Mail size={15} className="mt-0.5 shrink-0 text-[#d97706]" />
                   Alsarahconstuction2022@gmail.com
                 </a>
               </li>
@@ -135,11 +135,11 @@ export default function Footer() {
                   href="https://maps.app.goo.gl/wmzUrrBZnPMssx4t7"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-3 text-sm text-white/55 hover:text-white transition-colors"
+                  className="flex items-start gap-3 text-sm text-white/40 hover:text-white transition-colors"
                 >
                   <MapPin
                     size={15}
-                    className="mt-0.5 shrink-0 text-[#7A1A24]"
+                    className="mt-0.5 shrink-0 text-[#d97706]"
                   />
                   6 أكتوبر، محور جمال عبد الناصر
                 </a>

@@ -10,6 +10,33 @@ interface FullServiceCardProps {
   isHighlighted?: boolean;
 }
 
+const icons = {
+  "🏗️": (
+    <svg viewBox="0 0 48 48" fill="none" className="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 42V24L24 6L42 24V42H30V30H18V42H6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M18 42V30" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M30 42V30" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M24 18V26" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  "🎨": (
+    <svg viewBox="0 0 48 48" fill="none" className="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 16H40" stroke="currentColor" strokeWidth="2"/>
+      <path d="M16 16V36" stroke="currentColor" strokeWidth="2"/>
+      <circle cx="28" cy="28" r="6" stroke="currentColor" strokeWidth="2"/>
+      <path d="M25 28L27.5 30.5L32 26" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  "✨": (
+    <svg viewBox="0 0 48 48" fill="none" className="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4L28 18H42L30 28L34 42L24 34L14 42L18 28L6 18H20L24 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M38 8L42 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M36 12L38 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+};
+
 export default function FullServiceCard({
   icon,
   title,
@@ -30,69 +57,68 @@ export default function FullServiceCard({
   return (
     <article
       className={`
-        relative h-full flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1
+        relative h-full flex flex-col rounded-2xl overflow-hidden transition-all duration-500 group
         ${
           isHighlighted
-            ? "bg-[#7A1A24] text-white shadow-2xl shadow-[#7A1A24]/30 ring-2 ring-[#C9A84C]/40"
-            : "bg-white border border-[#E2DDD6] shadow-sm hover:shadow-xl hover:border-[#7A1A24]/30"
+            ? "bg-[#0f172a] text-white"
+            : "bg-white border border-[#e7e5e4]"
         }
       `}
     >
-      {/* Highlighted badge */}
-      {isHighlighted && (
-        <div className="absolute top-4 left-4 flex items-center gap-1.5 px-3 py-1 bg-[#C9A84C] text-[#1A1A18] text-xs font-bold rounded-full">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
-          الأكثر طلبًا
-        </div>
-      )}
+      {/* Background pattern - subtle grid */}
+      <div className={`absolute inset-0 opacity-[0.03] ${isHighlighted ? '' : 'bg-[#0c0a09]'}`}>
+        <div className="w-full h-full" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }}/>
+      </div>
 
-      <div className="p-7 flex flex-col h-full">
-        {/* Icon */}
-        <div className={`text-4xl mb-5 ${isHighlighted ? "opacity-90" : ""}`}>
-          {icon}
+      {/* Corner accent */}
+      <div className={`absolute top-0 right-0 w-20 h-20 transition-transform duration-500 group-hover:scale-110 ${isHighlighted ? 'bg-[#d97706]/10' : 'bg-[#d97706]/5'}`}>
+        <div className={`absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 ${isHighlighted ? 'border-[#d97706]/30' : 'border-[#d97706]/20'} rounded-tr-lg`} />
+      </div>
+
+      <div className="relative p-8 flex flex-col h-full z-10">
+        {/* Icon with circular background */}
+        <div className={`
+          w-16 h-16 rounded-2xl flex items-center justify-center mb-6
+          ${isHighlighted ? 'bg-[#d97706]/20 text-[#d97706]' : 'bg-[#f5f5f4] text-[#0f172a]'}
+        `}>
+          {icons[icon as keyof typeof icons] || <span className="text-3xl">{icon}</span>}
         </div>
 
-        {/* Title */}
-        <h3
-          className={`text-xl font-black mb-2 ${isHighlighted ? "text-white" : "text-[#1A1A18]"}`}
-        >
-          {title}
-        </h3>
+        {/* Title with accent line */}
+        <div className="mb-3">
+          <h3 className={`text-2xl font-bold mb-3 ${isHighlighted ? "text-white" : "text-[#0c0a09]"}`}>
+            {title}
+          </h3>
+          <div className={`w-12 h-1 rounded-full ${isHighlighted ? 'bg-[#d97706]' : 'bg-[#d97706]/40'}`} />
+        </div>
 
         {/* Subtitle */}
-        <p
-          className={`text-sm leading-relaxed mb-5 ${isHighlighted ? "text-white/75" : "text-[#6B6860]"}`}
-        >
+        <p className={`text-base leading-relaxed mb-6 ${isHighlighted ? "text-white/60" : "text-[#78716c]"}`}>
           {subtitle}
         </p>
 
-        {/* Divider */}
-        <div
-          className={`w-10 h-0.5 mb-5 rounded-full ${isHighlighted ? "bg-[#C9A84C]/60" : "bg-[#7A1A24]/30"}`}
-        />
-
-        {/* Feature list */}
-        <ul className="space-y-2.5 mb-7 flex-1">
-          {items.map((item, index) => (
-            <li key={index} className="flex items-start gap-2.5 text-sm">
-              <svg
-                className={`w-4 h-4 mt-0.5 shrink-0 ${isHighlighted ? "text-[#C9A84C]" : "text-[#7A1A24]"}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <span
-                className={isHighlighted ? "text-white/85" : "text-[#3A3A38]"}
-              >
+        {/* Feature list with custom styling */}
+        <ul className="space-y-4 mb-8 flex-1">
+          {items.slice(0, 4).map((item, index) => (
+            <li key={index} className="flex items-start gap-3">
+              <div className={`
+                w-6 h-6 rounded-full flex items-center justify-center mt-0.5 shrink-0
+                ${isHighlighted ? 'bg-[#d97706]/20' : 'bg-[#f5f5f4]'}
+              `}>
+                <svg
+                  className={`w-3 h-3 ${isHighlighted ? "text-[#d97706]" : "text-[#d97706]"}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <span className={`text-sm leading-relaxed ${isHighlighted ? "text-white/80" : "text-[#57534e]"}`}>
                 {item}
               </span>
             </li>
@@ -105,29 +131,29 @@ export default function FullServiceCard({
           target="_blank"
           rel="noopener noreferrer"
           className={`
-            inline-flex items-center justify-center gap-2 w-full py-3.5 px-5 rounded-xl font-bold text-sm transition-all duration-300
-            ${
-              isHighlighted
-                ? "bg-white text-[#7A1A24] hover:bg-[#F4F1EC] hover:shadow-lg"
-                : "bg-[#7A1A24] text-white hover:bg-[#5C1019] hover:shadow-lg hover:shadow-[#7A1A24]/25"
+            group/btn inline-flex items-center justify-center gap-3 w-full py-4 px-6 rounded-xl font-semibold text-sm transition-all duration-300
+            ${isHighlighted
+              ? "bg-[#d97706] text-white hover:bg-[#b45309] hover:shadow-xl hover:shadow-[#d97706]/20"
+              : "bg-[#0f172a] text-white hover:bg-[#1e293b] hover:shadow-xl"
             }
           `}
         >
-          {ctaText}
+          <span>{ctaText}</span>
           <svg
-            className="w-4 h-4 rtl:rotate-180"
+            className="w-4 h-4 rtl:rotate-180 transition-transform duration-300 group-hover/btn:translate-x-1"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13 7l5 5m0 0l-5 5m5-5H6"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </a>
+      </div>
+
+      {/* Bottom corner accent */}
+      <div className={`absolute bottom-0 left-0 w-16 h-16 ${isHighlighted ? 'bg-[#d97706]/5' : 'bg-[#f5f5f4]'}`}>
+        <div className={`absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 ${isHighlighted ? 'border-[#d97706]/20' : 'border-[#e7e5e4]'} rounded-bl-lg`} />
       </div>
     </article>
   );

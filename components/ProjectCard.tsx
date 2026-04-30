@@ -3,24 +3,30 @@ import Image from "next/image";
 import { MapPin, Calendar } from "lucide-react";
 import { ProjectCardProps } from "@/types";
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+interface Props extends ProjectCardProps {
+  priority?: boolean;
+}
+
+export default function ProjectCard({ project, priority = false }: Props) {
   return (
     <Link href={`/projects/${project.id}`} className="group block">
-      <article className="rounded-xl overflow-hidden bg-white border border-[#E2DDD6] shadow-sm hover:shadow-xl hover:border-[#7A1A24]/20 transition-all duration-300 hover:-translate-y-1">
+      <article className="relative rounded-2xl overflow-hidden bg-white border border-[#e7e5e4] shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
         {/* Image container */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-[#EDEAE4]">
+        <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f4]">
           {project.image ? (
             <Image
               src={project.image}
               alt={project.title}
               fill
+              priority={priority}
+              quality={80}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+              className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#EDEAE4]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#f5f5f4]">
               <svg
-                className="w-12 h-12 text-[#6B6860]/30"
+                className="w-12 h-12 text-[#a8a29e]/30"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -35,12 +41,17 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             </div>
           )}
 
-          {/* Gradient overlay on hover */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F0E0C]/80 via-[#0F0E0C]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Overlay on hover */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0a09]/80 via-[#0c0a09]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+          {/* Category tag */}
+          <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-[#0c0a09] opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-y-0 translate-y-2">
+            تشطيبات فاخرة
+          </div>
 
           {/* Hover CTA */}
-          <div className="absolute bottom-0 right-0 left-0 p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-            <span className="inline-flex items-center gap-1.5 text-white text-sm font-bold">
+          <div className="absolute bottom-0 right-0 left-0 p-5 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+            <span className="inline-flex items-center gap-2 text-white text-sm font-medium">
               عرض المشروع
               <svg
                 className="w-4 h-4 rtl:rotate-180"
@@ -61,26 +72,26 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
         {/* Content */}
         <div className="p-5">
-          <h3 className="font-black text-lg text-[#1A1A18] group-hover:text-[#7A1A24] transition-colors duration-300 mb-2 line-clamp-1">
+          <h3 className="font-bold text-lg text-[#0c0a09] group-hover:text-[#d97706] transition-colors duration-300 mb-2 line-clamp-1">
             {project.title}
           </h3>
 
           {project.description && (
-            <p className="text-sm text-[#6B6860] line-clamp-2 mb-4 leading-relaxed">
+            <p className="text-sm text-[#78716c] line-clamp-2 mb-4 leading-relaxed">
               {project.description}
             </p>
           )}
 
-          <div className="flex items-center gap-4 text-xs text-[#6B6860]">
+          <div className="flex items-center gap-4 text-xs text-[#a8a29e]">
             {project.location && (
               <span className="flex items-center gap-1.5">
-                <MapPin size={12} className="text-[#7A1A24]" />
-                {project.location}
+                <MapPin size={12} className="text-[#d97706]" />
+                <span className="max-w-[120px] truncate">{project.location}</span>
               </span>
             )}
             {project.year && (
               <span className="flex items-center gap-1.5">
-                <Calendar size={12} className="text-[#7A1A24]" />
+                <Calendar size={12} className="text-[#d97706]" />
                 {project.year}
               </span>
             )}
