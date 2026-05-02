@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ProjectCard from "@/components/ProjectCard";
 import Pagination from "@/components/Pagination";
 import { getPaginatedProjects } from "@/lib/data-fetching";
@@ -16,7 +17,8 @@ interface Props {
 export default async function ProjectsPage({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const page = parseInt(resolvedSearchParams.page ?? "1", 10);
-  const { projects, totalCount, pageSize, totalPages } = await getPaginatedProjects(page);
+  const { projects, totalCount, pageSize, totalPages } =
+    await getPaginatedProjects(page);
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
@@ -35,8 +37,8 @@ export default async function ProjectsPage({ searchParams }: Props) {
           </h1>
 
           <p className="text-white/60 text-lg md:text-xl max-w-2xl leading-relaxed">
-            استكشف أحدث إنجازاتنا المعمارية والمشاريع المكتملة التي تعكس الجودة،
-            الإبداع، والدقة في التنفيذ.
+            استكشف أحدث إنجازاتنا المعمارية والمشاريع المكتملة التي تعكس
+            الجودة، الإبداع، والدقة في التنفيذ.
           </p>
         </div>
       </section>
@@ -72,7 +74,10 @@ export default async function ProjectsPage({ searchParams }: Props) {
                   <ProjectCard
                     key={project.id}
                     project={project}
-                    priority={index < pageSize}
+                    // ✅ FIX: Only first 3 cards are above the fold on most screens.
+                    // Setting priority=true on ALL 6 cards (index < pageSize=6)
+                    // was preloading everything and saturating the network queue.
+                    priority={index < 3}
                   />
                 ))}
               </div>
@@ -80,11 +85,19 @@ export default async function ProjectsPage({ searchParams }: Props) {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-16">
-                  <Pagination
-                    currentPage={page}
-                    totalPages={totalPages}
-                    baseUrl="/projects"
-                  />
+                  {/*
+                   * ✅ FIX: Wrapped in Suspense.
+                   * Pagination uses useSearchParams() — a client hook.
+                   * Without Suspense, Next.js de-opts the ENTIRE page to client-side
+                   * rendering at build time, losing all SSR performance benefits.
+                   */}
+                  <Suspense fallback={<div className="h-12" />}>
+                    <Pagination
+                      currentPage={page}
+                      totalPages={totalPages}
+                      baseUrl="/projects"
+                    />
+                  </Suspense>
                 </div>
               )}
             </>

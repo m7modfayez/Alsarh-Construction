@@ -50,94 +50,106 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
               alt={`${title} - Image ${index + 1}`}
               src={image}
               fill
-              className="object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
+              // ✅ FIX: Added correct sizes for 3-column grid layout
+              // Without this, Next.js defaults to 100vw and downloads a full-width
+              // image for a card that is only 33% wide — 3× the necessary bandwidth
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              // ✅ FIX: First image is eager (may be in viewport), rest are lazy
+              loading={index === 0 ? "eager" : "lazy"}
+              className="object-cover group-hover:scale-110 transition-transform duration-500 ease-out will-change-transform"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+              <svg
+                className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6"
+                />
+              </svg>
+            </div>
           </button>
         ))}
       </div>
 
-      {/* Lightbox Modal */}
+      {/* Lightbox */}
       {selectedIndex !== null && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
           onClick={() => setSelectedIndex(null)}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image lightbox"
         >
+          {/* Close Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedIndex(null);
+            }}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
+            aria-label="Close lightbox"
+          >
+            <X size={24} />
+          </button>
+
+          {/* Previous Button */}
+          {images.length > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevious();
+              }}
+              className="absolute left-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+
+          {/* Image */}
           <div
-            className="relative max-w-6xl w-full max-h-[90vh]"
+            className="relative w-full max-w-5xl max-h-[85vh] mx-8"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedIndex(null)}
-              className="absolute -top-12 right-0 text-white hover:text-accent transition-colors p-2 rounded-full hover:bg-white/10"
-              aria-label="Close gallery"
-            >
-              <X size={32} />
-            </button>
+            <Image
+              src={images[selectedIndex]}
+              alt={`${title} - Image ${selectedIndex + 1}`}
+              width={1200}
+              height={800}
+              quality={90}
+              className="w-full h-full object-contain rounded-lg"
+              style={{ maxHeight: "85vh" }}
+              // Lightbox images are always eager (user just clicked to open)
+              loading="eager"
+            />
+          </div>
 
-            {/* Image */}
-            <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[75vh]">
-              <Image
-                src={images[selectedIndex]}
-                alt={`${title} - Image ${selectedIndex + 1}`}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                priority
-              />
-            </div>
-
-            {/* Navigation Buttons */}
+          {/* Next Button */}
+          {images.length > 1 && (
             <button
-              onClick={handlePrevious}
-              className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-all duration-200 p-2 rounded-full hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Previous image"
-              disabled={images.length <= 1}
-            >
-              <ChevronLeft size={32} />
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 text-white hover:text-accent transition-all duration-200 p-2 rounded-full hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
+              className="absolute right-4 p-2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10"
               aria-label="Next image"
-              disabled={images.length <= 1}
             >
-              <ChevronRight size={32} />
+              <ChevronRight size={24} />
             </button>
+          )}
 
-            {/* Image Counter */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
-              {selectedIndex + 1} / {images.length}
-            </div>
-
-            {/* Thumbnail Strip */}
-            {images.length > 1 && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2 max-w-full overflow-x-auto px-4">
-                {images.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedIndex(index)}
-                    className={`w-12 h-12 rounded-lg overflow-hidden transition-all duration-200 ${
-                      index === selectedIndex
-                        ? "ring-2 ring-white ring-offset-2 ring-offset-black"
-                        : "opacity-60 hover:opacity-100"
-                    }`}
-                    aria-label={`Go to image ${index + 1}`}
-                  >
-                    <Image
-                      src={images[index]}
-                      alt={`Thumbnail ${index + 1}`}
-                      fill
-                      className="object-cover"
-                      sizes="48px"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Image Counter */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            {selectedIndex + 1} / {images.length}
           </div>
         </div>
       )}

@@ -1,13 +1,24 @@
+import { unstable_cache } from "next/cache";
 import { Project } from "@/types";
 import { supabaseServer } from "./supabaseserver";
+
+// ✅ FIX: Revalidate every 60 seconds (ISR-style). Without this, every request
+// hits Supabase directly — even for the same data. Now cached at the framework level.
+const REVALIDATE_SECONDS = 60;
 
 function transformProject(raw: any): Project {
   const coverImage =
     raw.project_images?.find((img: any) => img.is_cover)?.image_url ||
     raw.cover_image ||
     "";
+
+  // ✅ FIX: Exclude the cover image from the gallery to avoid duplicating it
+  // (it appears in the hero section, so showing it again in the gallery is redundant)
   const gallery: string[] =
-    raw.project_images?.map((img: any) => img.image_url).filter(Boolean) || [];
+    raw.project_images
+      ?.filter((img: any) => img.image_url !== coverImage)
+      .map((img: any) => img.image_url)
+      .filter(Boolean) || [];
 
   return {
     id: raw.id,
@@ -15,30 +26,36 @@ function transformProject(raw: any): Project {
     description: raw.description ?? "",
     location: raw.location ?? "",
     year: raw.year,
-    category: "residential", // DB doesn't store category yet; default to residential
+    category: raw.category ?? "residential",
     image: coverImage,
     gallery,
     scope_of_work: raw.scope_of_work ?? undefined,
   };
 }
 
-export async function getFeaturedProjects(): Promise<Project[]> {
-  const { data, error } = await supabaseServer
-    .from("projects")
-    .select(
-      `id, title, description, location, year, cover_image,
+// ✅ FIX: Wrapped with unstable_cache — results are cached for 60s instead of
+// hitting Supabase on every single request.
+export const getFeaturedProjects = unstable_cache(
+  async (): Promise<Project[]> => {
+    const { data, error } = await supabaseServer
+      .from("projects")
+      .select(
+        `id, title, description, location, year, cover_image,
        project_images(image_url, is_cover)`,
-    )
-    .order("created_at", { ascending: false })
-    .limit(3);
+      )
+      .order("created_at", { ascending: false })
+      .limit(3);
 
-  if (error) {
-    console.error("[getFeaturedProjects]", error.message);
-    return [];
-  }
+    if (error) {
+      console.error("[getFeaturedProjects]", error.message);
+      return [];
+    }
 
-  return (data ?? []).map(transformProject);
-}
+    return (data ?? []).map(transformProject);
+  },
+  ["featured-projects"],
+  { revalidate: REVALIDATE_SECONDS },
+);
 
 export interface PaginatedProjectsResult {
   projects: Project[];
@@ -50,15 +67,18 @@ export interface PaginatedProjectsResult {
 
 const DEFAULT_PAGE_SIZE = 6;
 
-export async function getPaginatedProjects(
-  page: number = 1,
-  pageSize: number = DEFAULT_PAGE_SIZE,
-): Promise<PaginatedProjectsResult> {
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+// ✅ FIX: Removed the redundant second `SELECT *` count query.
+// The first query already returns an accurate count via { count: "exact" }.
+// The old code made TWO Supabase round-trips on every page load — now it's ONE.
+export const getPaginatedProjects = unstable_cache(
+  async (
+    page: number = 1,
+    pageSize: number = DEFAULT_PAGE_SIZE,
+  ): Promise<PaginatedProjectsResult> => {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
-  const [{ data, error }, { count }] = await Promise.all([
-    supabaseServer
+    const { data, error, count } = await supabaseServer
       .from("projects")
       .select(
         `id, title, description, location, year, cover_image,
@@ -66,79 +86,90 @@ export async function getPaginatedProjects(
         { count: "exact" },
       )
       .order("created_at", { ascending: false })
-      .range(from, to),
-    supabaseServer.from("projects").select("*", { count: "exact", head: true }),
-  ]);
+      .range(from, to);
 
-  if (error) {
-    console.error("[getPaginatedProjects]", error.message);
-    return { projects: [], totalCount: 0, page: 1, pageSize, totalPages: 0 };
-  }
+    if (error) {
+      console.error("[getPaginatedProjects]", error.message);
+      return { projects: [], totalCount: 0, page: 1, pageSize, totalPages: 0 };
+    }
 
-  const totalCount = count ?? 0;
-  const totalPages = Math.ceil(totalCount / pageSize);
+    const totalCount = count ?? 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
-  return {
-    projects: (data ?? []).map(transformProject),
-    totalCount,
-    page,
-    pageSize,
-    totalPages,
-  };
-}
+    return {
+      projects: (data ?? []).map(transformProject),
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+    };
+  },
+  ["paginated-projects"],
+  { revalidate: REVALIDATE_SECONDS },
+);
 
-export async function getAllProjects(): Promise<Project[]> {
-  const { data, error } = await supabaseServer
-    .from("projects")
-    .select(
-      `id, title, description, location, year, cover_image,
+export const getAllProjects = unstable_cache(
+  async (): Promise<Project[]> => {
+    const { data, error } = await supabaseServer
+      .from("projects")
+      .select(
+        `id, title, description, location, year, cover_image,
        project_images(image_url, is_cover)`,
-    )
-    .order("created_at", { ascending: false });
+      )
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("[getAllProjects]", error.message);
-    return [];
-  }
+    if (error) {
+      console.error("[getAllProjects]", error.message);
+      return [];
+    }
 
-  return (data ?? []).map(transformProject);
-}
+    return (data ?? []).map(transformProject);
+  },
+  ["all-projects"],
+  { revalidate: REVALIDATE_SECONDS },
+);
 
-export async function getProject(id: string): Promise<Project | null> {
-  const { data, error } = await supabaseServer
-    .from("projects")
-    .select(
-      `id, title, description, location, year, cover_image, scope_of_work,
+export const getProject = unstable_cache(
+  async (id: string): Promise<Project | null> => {
+    const { data, error } = await supabaseServer
+      .from("projects")
+      .select(
+        `id, title, description, location, year, cover_image, scope_of_work,
        project_images(image_url, is_cover)`,
-    )
-    .eq("id", id)
-    .single();
+      )
+      .eq("id", id)
+      .single();
 
-  if (error) {
-    console.error("[getProject]", error.message);
-    return null;
-  }
+    if (error) {
+      console.error("[getProject]", error.message);
+      return null;
+    }
 
-  return data ? transformProject(data) : null;
-}
+    return data ? transformProject(data) : null;
+  },
+  ["project"],
+  { revalidate: REVALIDATE_SECONDS },
+);
 
-export async function getRelatedProjects(
-  excludeId: string,
-): Promise<Project[]> {
-  const { data, error } = await supabaseServer
-    .from("projects")
-    .select(
-      `id, title, description, location, year, cover_image,
+export const getRelatedProjects = unstable_cache(
+  async (excludeId: string): Promise<Project[]> => {
+    const { data, error } = await supabaseServer
+      .from("projects")
+      .select(
+        `id, title, description, location, year, cover_image,
        project_images(image_url, is_cover)`,
-    )
-    .neq("id", excludeId)
-    .order("created_at", { ascending: false })
-    .limit(3);
+      )
+      .neq("id", excludeId)
+      .order("created_at", { ascending: false })
+      .limit(3);
 
-  if (error) {
-    console.error("[getRelatedProjects]", error.message);
-    return [];
-  }
+    if (error) {
+      console.error("[getRelatedProjects]", error.message);
+      return [];
+    }
 
-  return (data ?? []).map(transformProject);
-}
+    return (data ?? []).map(transformProject);
+  },
+  ["related-projects"],
+  { revalidate: REVALIDATE_SECONDS },
+);

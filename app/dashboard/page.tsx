@@ -3,20 +3,18 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Edit, Trash2, Plus, Eye } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 
 interface Project {
   id: string
   title: string
-  description: string
   location: string
   year: number
-  cover_image: string
-  created_at: string
+  cover_image: string | null
 }
 
-export default function ProjectsPage() {
+export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +28,7 @@ export default function ProjectsPage() {
       setLoading(true)
       const { data, error } = await supabase
         .from('projects')
-        .select('*')
+        .select('id, title, location, year, cover_image')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -46,59 +44,25 @@ export default function ProjectsPage() {
     if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) return
 
     try {
-      // First get project to find associated images
-      const { data: project } = await supabase
-        .from('projects')
-        .select('cover_image')
-        .eq('id', id)
-        .single()
-
-      if (project?.cover_image) {
-        // Extract file path from URL
-        const filePath = project.cover_image.split('/').pop()
-        if (filePath) {
-          await supabase.storage
-            .from('projects')
-            .remove([filePath])
-        }
-      }
-
-      // Delete project images
+      // Delete associated images from storage first
       const { data: images } = await supabase
         .from('project_images')
         .select('image_url')
         .eq('project_id', id)
 
-      if (images) {
-        const filePaths = images
-          .map(img => img.image_url.split('/').pop())
-          .filter(Boolean) as string[]
-
+      if (images && images.length > 0) {
+        const filePaths = images.map(img => img.image_url.split('/').pop()).filter(Boolean) as string[]
         if (filePaths.length > 0) {
-          await supabase.storage
-            .from('projects')
-            .remove(filePaths)
+          await supabase.storage.from('projects').remove(filePaths)
         }
       }
 
-      // Delete project images records
-      await supabase
-        .from('project_images')
-        .delete()
-        .eq('project_id', id)
-
-      // Delete project
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id)
-
+      const { error } = await supabase.from('projects').delete().eq('id', id)
       if (error) throw error
 
-      // Refresh projects list
-      fetchProjects()
+      setProjects(prev => prev.filter(p => p.id !== id))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'فشل في حذف المشروع')
+      setError(err instanceof Error ? err.message : 'فشل في حذف المشروع')
     }
   }
 
@@ -110,36 +74,28 @@ export default function ProjectsPage() {
     )
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-red-600 text-lg mb-4">{error}</div>
-        <button
-          onClick={fetchProjects}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          إعادة المحاولة
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">المشاريع</h1>
-          <p className="text-gray-600 mt-1">إدارة جميع مشاريع البناء</p>
+          <p className="text-gray-600 mt-1">{projects.length} مشروع إجمالاً</p>
         </div>
         <Link
           href="/dashboard/add"
-          className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="ml-2 h-5 w-5" />
-          إضافة مشروع جديد
+          إضافة مشروع
         </Link>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
 
       {projects.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
@@ -163,6 +119,10 @@ export default function ProjectsPage() {
                     src={project.cover_image}
                     alt={project.title}
                     fill
+                    // ✅ FIX: Added sizes prop — without this, Next.js downloads a
+                    // full-viewport-width image for what is only a ~350px wide card thumbnail.
+                    // This was downloading 4–8× more image data than necessary.
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className="object-cover"
                   />
                 ) : (
