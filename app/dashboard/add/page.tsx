@@ -1,152 +1,156 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Upload, X, ArrowLeft, Save } from 'lucide-react'
-import { supabase } from '@/lib/supabaseClient'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Upload, X, ArrowLeft, Save } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface UploadedImage {
-  file: File
-  url: string
-  isCover: boolean
+  file: File;
+  url: string;
+  isCover: boolean;
 }
 
 export default function AddProjectPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Form fields
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [location, setLocation] = useState('')
-  const [year, setYear] = useState(new Date().getFullYear().toString())
-  const [scopeOfWork, setScopeOfWork] = useState('')
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [scopeOfWork, setScopeOfWork] = useState("");
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    if (files.length === 0) return
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const newImages: UploadedImage[] = []
+      const isFirstBatch = uploadedImages.length === 0;
 
-      for (const file of files) {
-        // Generate unique file name
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`
-        
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('projects')
-          .upload(fileName, file)
+      // ✅ FIX: Upload all files in PARALLEL using Promise.all instead of a sequential
+      // for-loop. For 5 images the old code made 5 sequential round-trips (each waiting
+      // for the previous to finish). Now all uploads run concurrently.
+      const uploadPromises = files.map(async (file, index) => {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`;
 
-        if (error) throw error
+        const { error: uploadError } = await supabase.storage
+          .from("projects")
+          .upload(fileName, file);
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('projects')
-          .getPublicUrl(fileName)
+        if (uploadError) throw uploadError;
 
-        newImages.push({
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("projects").getPublicUrl(fileName);
+
+        return {
           file,
           url: publicUrl,
-          isCover: uploadedImages.length === 0 && newImages.length === 0 // First image is cover by default
-        })
-      }
+          // First image of the first batch becomes the cover by default
+          isCover: isFirstBatch && index === 0,
+        } as UploadedImage;
+      });
 
-      setUploadedImages(prev => [...prev, ...newImages])
+      const newImages = await Promise.all(uploadPromises);
+      setUploadedImages((prev) => [...prev, ...newImages]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في رفع الصور')
+      setError(err instanceof Error ? err.message : "فشل في رفع الصور");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleRemoveImage = (index: number) => {
-    setUploadedImages(prev => {
-      const newImages = prev.filter((_, i) => i !== index)
+    setUploadedImages((prev) => {
+      const newImages = prev.filter((_, i) => i !== index);
       // If removing cover image, make first remaining image the cover
       if (prev[index].isCover && newImages.length > 0) {
-        newImages[0].isCover = true
+        newImages[0] = { ...newImages[0], isCover: true };
       }
-      return newImages
-    })
-  }
+      return newImages;
+    });
+  };
 
   const handleSetCover = (index: number) => {
-    setUploadedImages(prev => 
-      prev.map((img, i) => ({
-        ...img,
-        isCover: i === index
-      }))
-    )
-  }
+    setUploadedImages((prev) =>
+      prev.map((img, i) => ({ ...img, isCover: i === index })),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!title.trim() || !location.trim() || !year.trim()) {
-      setError('الرجاء ملء جميع الحقول المطلوبة')
-      return
+      setError("الرجاء ملء جميع الحقول المطلوبة");
+      return;
     }
 
     if (uploadedImages.length === 0) {
-      setError('الرجاء رفع صورة واحدة على الأقل')
-      return
+      setError("الرجاء رفع صورة واحدة على الأقل");
+      return;
     }
 
-    const coverImage = uploadedImages.find(img => img.isCover)
+    const coverImage = uploadedImages.find((img) => img.isCover);
     if (!coverImage) {
-      setError('الرجاء اختيار صورة غلاف')
-      return
+      setError("الرجاء اختيار صورة غلاف");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       // Create project
       const { data: project, error: projectError } = await supabase
-        .from('projects')
+        .from("projects")
         .insert({
           title: title.trim(),
           description: description.trim(),
           location: location.trim(),
           year: parseInt(year),
           cover_image: coverImage.url,
-          scope_of_work: scopeOfWork.trim() ? scopeOfWork.trim().split(/[\+,\u2022]/).map(item => item.trim()).filter(item => item.length > 0) : []
+          scope_of_work: scopeOfWork.trim()
+            ? scopeOfWork
+                .trim()
+                .split(/[\+,\u2022]/)
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0)
+            : [],
         })
         .select()
-        .single()
+        .single();
 
-      if (projectError) throw projectError
+      if (projectError) throw projectError;
 
       // Save all images to project_images table
-      const imageRecords = uploadedImages.map(img => ({
+      const imageRecords = uploadedImages.map((img) => ({
         project_id: project.id,
         image_url: img.url,
-        is_cover: img.isCover
-      }))
+        is_cover: img.isCover,
+      }));
 
       const { error: imagesError } = await supabase
-        .from('project_images')
-        .insert(imageRecords)
+        .from("project_images")
+        .insert(imageRecords);
 
-      if (imagesError) throw imagesError
+      if (imagesError) throw imagesError;
 
-      // Redirect to projects list
-      router.push('/dashboard')
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في حفظ المشروع')
+      setError(err instanceof Error ? err.message : "فشل في حفظ المشروع");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div>
@@ -172,8 +176,10 @@ export default function AddProjectPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">المعلومات الأساسية</h2>
-          
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            المعلومات الأساسية
+          </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,6 +227,19 @@ export default function AddProjectPage() {
 
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              نوع العمل
+            </label>
+            <textarea
+              value={scopeOfWork}
+              onChange={(e) => setScopeOfWork(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="نوع العمل (مفصول بفواصل)"
+            />
+          </div>
+
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               الوصف
             </label>
             <textarea
@@ -231,25 +250,12 @@ export default function AddProjectPage() {
               placeholder="أدخل وصف المشروع"
             />
           </div>
-
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              نوع العمل
-            </label>
-            <textarea
-              value={scopeOfWork}
-              onChange={(e) => setScopeOfWork(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="نوع العمل"
-            />
-          </div>
         </div>
 
         {/* Images */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">الصور</h2>
-          
+
           {/* Upload Button */}
           <div className="mb-6">
             <label className="block">
@@ -264,7 +270,9 @@ export default function AddProjectPage() {
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer">
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
                 <p className="text-gray-600">اضغط لرفع الصور أو اسحب وأفلت</p>
-                <p className="text-sm text-gray-500 mt-1">يمكنك رفع多个 صور في نفس الوقت</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  يمكنك رفع عدة صور في نفس الوقت
+                </p>
               </div>
             </label>
           </div>
@@ -272,7 +280,9 @@ export default function AddProjectPage() {
           {/* Uploaded Images */}
           {uploadedImages.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">الصور المرفوعة ({uploadedImages.length})</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-3">
+                الصور المرفوعة ({uploadedImages.length})
+              </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {uploadedImages.map((image, index) => (
                   <div key={index} className="relative group">
@@ -281,10 +291,11 @@ export default function AddProjectPage() {
                         src={image.url}
                         alt={`Uploaded ${index + 1}`}
                         fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
                         className="object-cover"
                       />
                     </div>
-                    
+
                     {/* Cover Badge */}
                     {image.isCover && (
                       <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
@@ -342,5 +353,5 @@ export default function AddProjectPage() {
         </div>
       </form>
     </div>
-  )
+  );
 }

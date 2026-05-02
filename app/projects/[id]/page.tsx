@@ -3,6 +3,7 @@ import Image from "next/image";
 import { MapPin, Calendar, ArrowRight, MessageCircle } from "lucide-react";
 
 import ProjectCard from "@/components/ProjectCard";
+import ProjectGallery from "@/components/ProjectGallery";
 import { getProject, getRelatedProjects } from "@/lib/data-fetching";
 
 interface Props {
@@ -21,11 +22,9 @@ export default async function ProjectDetailPage({ params }: Props) {
           <h1 className="text-3xl font-black text-[#1A1A18] mb-3">
             المشروع غير موجود
           </h1>
-
           <p className="text-[#6B6860] mb-8">
             المشروع الذي تبحث عنه غير موجود.
           </p>
-
           <Link
             href="/projects"
             className="inline-block px-7 py-3.5 bg-[#7A1A24] text-white font-bold rounded-xl hover:bg-[#5C1019] transition-colors"
@@ -38,7 +37,11 @@ export default async function ProjectDetailPage({ params }: Props) {
   }
 
   const relatedProjects = await getRelatedProjects(id);
-  const images = project.gallery?.filter(Boolean) || [];
+
+  const galleryImages = [
+    ...(project.image ? [project.image] : []),
+    ...(project.gallery?.filter(Boolean) ?? []),
+  ];
 
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
@@ -83,7 +86,6 @@ export default async function ProjectDetailPage({ params }: Props) {
                     {project.location}
                   </span>
                 )}
-
                 {project.year && (
                   <span className="flex items-center gap-2">
                     <Calendar size={15} />
@@ -116,7 +118,6 @@ export default async function ProjectDetailPage({ params }: Props) {
                       نبذة عن المشروع
                     </span>
                   </div>
-
                   <p className="text-[#6B6860] leading-loose text-lg">
                     {project.description}
                   </p>
@@ -135,18 +136,15 @@ export default async function ProjectDetailPage({ params }: Props) {
                   {project.location && (
                     <InfoRow label="الموقع" value={project.location} />
                   )}
-
                   {project.year && (
                     <InfoRow label="السنة" value={project.year.toString()} />
                   )}
-
                   {project.scope_of_work &&
                     project.scope_of_work.length > 0 && (
                       <div className="pt-2">
                         <p className="text-xs text-[#6B6860] font-semibold uppercase tracking-wide mb-3">
                           نوع العمل
                         </p>
-
                         <ul className="space-y-2">
                           {project.scope_of_work.map((item, index) => (
                             <li
@@ -179,32 +177,21 @@ export default async function ProjectDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Gallery */}
-          {images.length > 0 && (
+          {/* Gallery — now uses ProjectGallery with click-to-open lightbox + arrow keys */}
+          {galleryImages.length > 0 && (
             <section className="mt-24">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-8 h-px bg-[#7A1A24]" />
                 <h2 className="text-2xl font-black text-[#1A1A18]">
                   معرض صور المشروع
                 </h2>
+                <span className="text-sm text-[#6B6860] mr-2">
+                  ({galleryImages.length} صورة — اضغط على أي صورة لعرضها بالحجم
+                  الكامل)
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {images.map((src, index) => (
-                  <div
-                    key={index}
-                    className="relative aspect-[4/3] rounded-xl overflow-hidden bg-[#EDEAE4]"
-                  >
-                    <Image
-                      src={src}
-                      alt={`${project.title} ${index + 1}`}
-                      fill
-                      sizes="(max-width:768px) 100vw, 33vw"
-                      className="object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                ))}
-              </div>
+              <ProjectGallery images={galleryImages} title={project.title} />
             </section>
           )}
         </div>
@@ -248,7 +235,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-xs text-[#6B6860] font-semibold uppercase tracking-wide">
         {label}
       </span>
-
       <span className="font-bold text-[#1A1A18] text-sm">{value}</span>
     </div>
   );

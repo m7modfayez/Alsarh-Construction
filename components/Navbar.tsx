@@ -47,7 +47,7 @@ export default function Navbar() {
               width={44}
               height={44}
               priority
-              className="h-11 w-auto object-contain"
+              className="h-11 w-auto h-auto object-contain"
             />
             {/* <span className="hidden sm:block font-bold text-lg text-[#0c0a09] leading-tight">
               الصرح
