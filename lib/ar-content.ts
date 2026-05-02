@@ -35,8 +35,8 @@ whoWeAre: 'شريكك الموثوق لتنفيذ مشروعك من البداي
 aboutDescription1: 'ننفذ مشروعك على أرضك بدايةً من **الهيكل الخرساني**، مرورًا بـ**التشطيب الكامل**، وحتى تسليمه جاهز للاستخدام حسب احتياجاتك.',
 aboutDescription2: 'نقدم حلول متكاملة تشمل التخطيط، التنفيذ، والتشطيب، مع الالتزام بأعلى معايير الجودة والدقة، وضمان التسليم في الوقت المتفق عليه. نرافقك خطوة بخطوة حتى اكتمال مشروعك.',
   // Statistics
-  completedProjects: 'مشروع تم تنفيذه',
-  satisfiedClients: 'عميل راضٍ',
+  completedProjects: 'مشروع',
+  satisfiedClients: 'عميل',
   yearsExperience: 'سنة خبرة',
 
   // Services - Full Service Offerings

@@ -27,11 +27,7 @@ export default function Navbar() {
 
   return (
     <nav
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/90 backdrop-blur-xl shadow-sm border-b border-[#e7e5e4]"
-          : "bg-transparent"
-      }`}
+      className={`bg-white sticky top-0 z-50 transition-all duration-300`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-[72px]">
@@ -53,12 +49,12 @@ export default function Navbar() {
               priority
               className="h-11 w-auto object-contain"
             />
-            <span className="hidden sm:block font-bold text-lg text-[#0c0a09] leading-tight">
+            {/* <span className="hidden sm:block font-bold text-lg text-[#0c0a09] leading-tight">
               الصرح
               <span className="block text-[10px] font-normal text-[#78716c] tracking-widest uppercase">
                 Construction
               </span>
-            </span>
+            </span> */}
           </Link>
 
           {/* Desktop Navigation */}

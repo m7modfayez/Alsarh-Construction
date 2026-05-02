@@ -33,12 +33,12 @@ export default function Hero() {
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 py-32">
         <div className="max-w-3xl">
           {/* Subtle badge */}
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-white/[0.05] border border-white/[0.1] rounded-full backdrop-blur-sm mb-8 animate-fade-in">
+          {/* <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-white/[0.05] border border-white/[0.1] rounded-full backdrop-blur-sm mb-8 animate-fade-in">
             <span className="w-1.5 h-1.5 rounded-full bg-[#d97706] animate-pulse" />
             <span className="text-xs font-medium text-white/60 tracking-wide">
               منذ 2018 · أكثر من 100 مشروع منجز
             </span>
-          </div>
+          </div> */}
 
           {/* Headline - more refined */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.15] mb-6 tracking-tight animate-fade-in-up">
