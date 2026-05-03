@@ -5,8 +5,8 @@ import { statistics } from "@/data";
 import { ar } from "@/lib/ar-content";
 import { getFeaturedProjects } from "@/lib/data-fetching";
 
-// Revalidate every 60 s — new projects appear without a full redeploy
-export const revalidate = 60 * 5;
+// Revalidate every 5 minutes — new projects appear without a full redeploy
+export const revalidate = 300;
 
 export default async function Home() {
   const featuredProjects = await getFeaturedProjects();

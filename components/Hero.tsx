@@ -32,14 +32,7 @@ export default function Hero() {
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 py-32">
         <div className="max-w-3xl">
-          {/* Subtle badge */}
-          {/* <div className="inline-flex items-center gap-2.5 px-4 py-2 bg-white/[0.05] border border-white/[0.1] rounded-full backdrop-blur-sm mb-8 animate-fade-in">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#d97706] animate-pulse" />
-            <span className="text-xs font-medium text-white/60 tracking-wide">
-              منذ 2018 · أكثر من 100 مشروع منجز
-            </span>
-          </div> */}
-
+       
           {/* Headline - more refined */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.15] mb-6 tracking-tight animate-fade-in-up">
             {ar.heroTitle}
@@ -54,9 +47,9 @@ export default function Hero() {
           {/* Service pills - cleaner design */}
           <div className="flex flex-wrap gap-3 mb-10 animate-fade-in-up delay-300">
             {[
-              { icon: "🏗️", label: "البناء من الصفر" },
+              { icon: "🏗️", label: "البناء" },
               { icon: "🎨", label: "التشطيب الكامل" },
-              { icon: "🔑", label: "تسليم مفتاح" },
+              { icon: "🔑", label: "من الأرض لتسليم المفتاح" },
             ].map((s) => (
               <span
                 key={s.label}

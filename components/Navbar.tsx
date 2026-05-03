@@ -44,8 +44,8 @@ export default function Navbar() {
             <Image
               src="/images/alsarh1.png"
               alt="الصرح للإنشاءات"
-              width={44}
-              height={44}
+              width={70}
+              height={70}
               priority
               className="h-11 w-auto h-auto object-contain"
             />

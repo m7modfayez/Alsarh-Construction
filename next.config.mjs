@@ -24,6 +24,12 @@ const nextConfig = {
 
     minimumCacheTTL: 60 * 60 * 24 * 7,
   },
+
+  // Fix for Next.js 16.2.4 segment configuration issues
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react'],
+  },
 };
 
 export default nextConfig;
