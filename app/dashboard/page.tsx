@@ -12,6 +12,7 @@ interface Project {
   location: string
   year: number
   cover_image: string | null
+  is_featured: boolean
 }
 
 export default function DashboardPage() {
@@ -28,7 +29,8 @@ export default function DashboardPage() {
       setLoading(true)
       const { data, error } = await supabase
         .from('projects')
-        .select('id, title, location, year, cover_image')
+        .select('id, title, location, year, cover_image, is_featured')
+        .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -111,7 +113,12 @@ export default function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div key={project.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <div
+              key={project.id}
+              className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow ${
+                project.is_featured ? 'border border-amber-200 ring-1 ring-amber-100' : ''
+              }`}
+            >
               {/* Cover Image */}
               <div className="relative h-48 bg-gray-200">
                 {project.cover_image ? (
@@ -128,6 +135,12 @@ export default function DashboardPage() {
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400">
                     <span>لا توجد صورة</span>
+                  </div>
+                )}
+
+                {project.is_featured && (
+                  <div className="absolute top-3 right-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm backdrop-blur-sm">
+                    مميز
                   </div>
                 )}
               </div>

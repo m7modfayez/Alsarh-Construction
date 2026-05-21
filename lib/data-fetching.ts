@@ -30,6 +30,7 @@ function transformProject(raw: any): Project {
     image: coverImage,
     gallery,
     scope_of_work: raw.scope_of_work ?? undefined,
+    is_featured: Boolean(raw.is_featured),
   };
 }
 
@@ -40,9 +41,10 @@ export const getFeaturedProjects = unstable_cache(
     const { data, error } = await supabaseServer
       .from("projects")
       .select(
-        `id, title, description, location, year, cover_image,
+        `id, title, description, location, year, cover_image, is_featured,
        project_images(image_url, is_cover)`,
       )
+      .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(3);
 
@@ -81,10 +83,11 @@ export const getPaginatedProjects = unstable_cache(
     const { data, error, count } = await supabaseServer
       .from("projects")
       .select(
-        `id, title, description, location, year, cover_image,
+        `id, title, description, location, year, cover_image, is_featured,
          project_images(image_url, is_cover)`,
         { count: "exact" },
       )
+      .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, to);
 
@@ -113,9 +116,10 @@ export const getAllProjects = unstable_cache(
     const { data, error } = await supabaseServer
       .from("projects")
       .select(
-        `id, title, description, location, year, cover_image,
+        `id, title, description, location, year, cover_image, is_featured,
        project_images(image_url, is_cover)`,
       )
+      .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -134,7 +138,7 @@ export const getProject = unstable_cache(
     const { data, error } = await supabaseServer
       .from("projects")
       .select(
-        `id, title, description, location, year, cover_image, scope_of_work,
+        `id, title, description, location, year, cover_image, scope_of_work, is_featured,
        project_images(image_url, is_cover)`,
       )
       .eq("id", id)
@@ -156,10 +160,11 @@ export const getRelatedProjects = unstable_cache(
     const { data, error } = await supabaseServer
       .from("projects")
       .select(
-        `id, title, description, location, year, cover_image,
+        `id, title, description, location, year, cover_image, is_featured,
        project_images(image_url, is_cover)`,
       )
       .neq("id", excludeId)
+      .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(3);
 

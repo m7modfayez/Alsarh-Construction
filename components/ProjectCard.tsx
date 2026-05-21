@@ -28,7 +28,13 @@ export default function ProjectCard({ project, priority = false }: Props) {
 
   return (
     <Link href={`/projects/${project.id}`} className="group block">
-      <article className="relative rounded-2xl overflow-hidden bg-white border border-[#e7e5e4] shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1">
+      <article
+        className={`relative rounded-2xl overflow-hidden bg-white shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 ${
+          project.is_featured
+            ? "border border-amber-200 ring-1 ring-amber-100"
+            : "border border-[#e7e5e4]"
+        }`}
+      >
         {/* Image container */}
         <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f4]">
           {project.image ? (
@@ -72,6 +78,12 @@ export default function ProjectCard({ project, priority = false }: Props) {
           <div className="absolute top-4 right-4 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-[#0c0a09] opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-y-0 translate-y-2">
             {categoryLabel}
           </div>
+
+          {project.is_featured && (
+            <div className="absolute top-4 left-4 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm backdrop-blur-sm">
+              مميز
+            </div>
+          )}
 
           {/* Hover CTA */}
           <div className="absolute bottom-0 right-0 left-0 p-5 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">

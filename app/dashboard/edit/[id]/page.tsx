@@ -46,6 +46,7 @@ export default function EditProjectPage() {
   const [location, setLocation] = useState("");
   const [year, setYear] = useState("");
   const [scopeOfWork, setScopeOfWork] = useState("");
+  const [isFeatured, setIsFeatured] = useState(false);
   const [existingImages, setExistingImages] = useState<ProjectImage[]>([]);
   const [newImages, setNewImages] = useState<UploadedImage[]>([]);
 
@@ -77,6 +78,7 @@ export default function EditProjectPage() {
       setDescription(projectData.description || "");
       setLocation(projectData.location);
       setYear(projectData.year.toString());
+      setIsFeatured(Boolean(projectData.is_featured));
       setScopeOfWork(
         Array.isArray(projectData.scope_of_work)
           ? projectData.scope_of_work.join(" + ")
@@ -213,6 +215,7 @@ export default function EditProjectPage() {
         description: description.trim(),
         location: location.trim(),
         year: parseInt(year),
+        is_featured: isFeatured,
         scope_of_work: scopeOfWork.trim()
           ? scopeOfWork
               .trim()
@@ -373,6 +376,18 @@ export default function EditProjectPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="نوع العمل (مفصول بفواصل)"
             />
+          </div>
+
+          <div className="mt-6">
+            <label className="inline-flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/50 px-4 py-3 text-sm font-medium text-gray-800">
+              <input
+                type="checkbox"
+                checked={isFeatured}
+                onChange={(e) => setIsFeatured(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              />
+              <span>مشروع مميز</span>
+            </label>
           </div>
 
           <div className="mt-6">
