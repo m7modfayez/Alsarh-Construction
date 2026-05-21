@@ -43,7 +43,7 @@ export default async function Home() {
                 {ar.aboutDescription2}
               </p>
               <a
-                href={`https://wa.me/201044088731?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`}
+                href={`https://wa.me/201066397098?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#0f172a] text-white font-semibold rounded-xl hover:bg-[#1e293b] transition-all duration-300 hover:shadow-xl"
@@ -282,7 +282,7 @@ export default async function Home() {
                   }}
                 />
                 <a
-                  href={`https://wa.me/201044088731?text=${encodeURIComponent("مرحبًا، حابب أبدأ مشروع وعايز مساعدة في البناء أو التشطيب لحد ما يبقى جاهز بالكامل.")}`}
+                  href={`https://wa.me/201066397098?text=${encodeURIComponent("مرحبًا، حابب أبدأ مشروع وعايز مساعدة في البناء أو التشطيب لحد ما يبقى جاهز بالكامل.")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="self-start inline-flex items-center gap-3 px-8 py-4 bg-[#d97706] text-white font-semibold rounded-xl hover:bg-[#b45309] transition-all duration-300 hover:shadow-xl text-base"

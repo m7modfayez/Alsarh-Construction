@@ -47,7 +47,7 @@ export default function FullServiceCard({
   isHighlighted = false,
 }: FullServiceCardProps) {
   const encodedMessage = encodeURIComponent(message);
-  const whatsappLink = `https://wa.me/201044088731?text=${encodedMessage}`;
+  const whatsappLink = `https://wa.me/201066397098?text=${encodedMessage}`;
 
   const items = includesList
     .split(/\s*[•\u2022]\s*/)

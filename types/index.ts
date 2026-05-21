@@ -11,6 +11,7 @@ export interface Project {
   year: number;
   gallery: string[];
   scope_of_work?: string[];
+  is_featured?: boolean;
 }
 
 /**

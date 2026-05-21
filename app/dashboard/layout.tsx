@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X, FolderOpen, Plus } from 'lucide-react'
+import { Menu, X, FolderOpen, Plus, LogOut } from 'lucide-react'
+import { logout } from '@/app/actions/auth'
 
 export default function DashboardLayout({
   children,
@@ -30,7 +31,7 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
       `}>
         <div className="flex items-center justify-between h-16 px-4 border-b lg:border-none">
@@ -43,7 +44,7 @@ export default function DashboardLayout({
           </button>
         </div>
         
-        <nav className="mt-8 px-4">
+        <nav className="mt-8 px-4 flex-1">
           <div className="space-y-2">
             {navigation.map((item) => {
               const isActive = pathname === item.href
@@ -66,6 +67,17 @@ export default function DashboardLayout({
             })}
           </div>
         </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t mt-auto">
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            تسجيل الخروج
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -80,7 +92,13 @@ export default function DashboardLayout({
               <Menu className="h-6 w-6" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900">لوحة التحكم</h1>
-            <div className="w-10" /> {/* Spacer for centering */}
+            <button
+              onClick={() => logout()}
+              className="p-2 rounded-md text-red-600 hover:text-red-700 hover:bg-red-50"
+              title="تسجيل الخروج"
+            >
+              <LogOut className="h-6 w-6" />
+            </button>
           </div>
         </div>
 

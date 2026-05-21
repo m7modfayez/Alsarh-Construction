@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Phone, MapPin, Facebook, Instagram } from "lucide-react";
+import { Mail, Phone, MapPin, Facebook, Instagram, Youtube, Music } from "lucide-react";
 import { ar } from "@/lib/ar-content";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
-  const whatsappHref = `https://wa.me/201044088731?text=${encodeURIComponent("مرحبًا، أرغب في الاستفسار عن خدماتكم.")}`;
+  const whatsappHref = `https://wa.me/201066397098?text=${encodeURIComponent("مرحبًا، أرغب في الاستفسار عن خدماتكم.")}`;
 
   return (
     <footer className="bg-[#0c0a09] text-white">
@@ -69,6 +69,16 @@ export default function Footer() {
               >
                 <Facebook size={16} />
               </a>
+              {/* mohamed fayez facebook  */}
+              <a
+                href="https://www.facebook.com/medo.fayez.934285"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-[#d97706] transition-colors duration-200"
+                aria-label="فيسبوك"
+              >
+                <Facebook size={16} />
+              </a>
               <a
                 href="https://www.instagram.com/alsarhconstruction4"
                 target="_blank"
@@ -77,6 +87,24 @@ export default function Footer() {
                 aria-label="إنستغرام"
               >
                 <Instagram size={16} />
+              </a>
+               <a
+                href="https://youtube.com/@alsarh.modern.contracting?si=7Mf-ocPniWXMCbXC"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-[#d97706] transition-colors duration-200"
+                aria-label="يوتيوب"
+              >
+                <Youtube size={16} />
+              </a>
+              <a
+                href="https://www.tiktok.com/@mohamed.fayez.decoration?_r=1&_t=ZS-95obGUwfX65"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/[0.05] hover:bg-[#d97706] transition-colors duration-200"
+                aria-label="تيك توك"
+              >
+                <Music size={16} />
               </a>
             </div>
           </div>
@@ -119,6 +147,15 @@ export default function Footer() {
                 >
                   <Phone size={15} className="mt-0.5 shrink-0 text-[#d97706]" />
                   01019499997
+                </a>
+              </li>
+              <li>
+                <a
+                  href="tel:+201229244561"
+                  className="flex items-start gap-3 text-sm text-white/40 hover:text-white transition-colors"
+                >
+                  <Phone size={15} className="mt-0.5 shrink-0 text-[#d97706]" />
+                  01229244561
                 </a>
               </li>
               <li>

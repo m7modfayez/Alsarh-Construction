@@ -162,7 +162,7 @@ export default async function ProjectDetailPage({ params }: Props) {
 
                 <div className="px-6 pb-6">
                   <a
-                    href={`https://wa.me/201044088731?text=${encodeURIComponent(
+                    href={`https://wa.me/201066397098?text=${encodeURIComponent(
                       `السلام عليكم، أنا مهتم بمشروع ${project.title} وأرغب في معرفة المزيد من التفاصيل.`,
                     )}`}
                     target="_blank"

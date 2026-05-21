@@ -23,7 +23,7 @@ export default function Navbar() {
     { href: "/#contact", label: ar.contact },
   ];
 
-  const whatsappHref = `https://wa.me/201044088731?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`;
+  const whatsappHref = `https://wa.me/201066397098?text=${encodeURIComponent(ar.heroCtaPrimaryMessage)}`;
 
   return (
     <nav
