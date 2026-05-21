@@ -69,9 +69,10 @@ export default function LoginPage() {
             <Image
               src="/images/alsarh1.png"
               alt="الصرح للإنشاءات"
-              width={50}
-              height={50}
-              className="h-12 w-auto object-contain brightness-0 invert"
+              width={70}
+              height={70}
+              priority
+              className="h-11 w-auto h-auto object-contain"
             />
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">لوحة التحكم</h1>

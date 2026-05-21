@@ -50,9 +50,10 @@ export default function Footer() {
               <Image
                 src="/images/alsarh1.png"
                 alt="الصرح للإنشاءات"
-                width={40}
-                height={40}
-                className="h-10 w-auto object-contain brightness-0 invert"
+                width={70}
+                height={70}
+                priority
+                className="h-11 w-auto h-auto object-contain"
               />
               <span className="text-xl font-black">الصرح للإنشاءات</span>
             </div>
