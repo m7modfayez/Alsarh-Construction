@@ -19,9 +19,13 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [cleanupPending, setCleanupPending] = useState(0)
+  const [cleanupBusy, setCleanupBusy] = useState(false)
 
   useEffect(() => {
     fetchProjects()
+    fetchCleanupStatus()
   }, [])
 
   const fetchProjects = async () => {
@@ -42,29 +46,52 @@ export default function DashboardPage() {
     }
   }
 
+  const fetchCleanupStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/cloudinary-cleanup')
+      if (!response.ok) return
+      const result = await response.json()
+      setCleanupPending(result.pending ?? 0)
+    } catch {
+      // Project listing remains usable when the optional cleanup status is unavailable.
+    }
+  }
+
+  const retryCloudinaryCleanup = async () => {
+    setCleanupBusy(true)
+    setError(null)
+    try {
+      const response = await fetch('/api/admin/cloudinary-cleanup', { method: 'POST' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'تعذرت إعادة محاولة تنظيف الصور')
+      await fetchCleanupStatus()
+      if (result.cleanup?.failed) setError('تمت العملية، لكن ما زالت بعض صور Cloudinary بحاجة إلى إعادة المحاولة.')
+      else setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذرت إعادة محاولة تنظيف الصور')
+    } finally {
+      setCleanupBusy(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) return
 
+    setDeletingId(id)
+    setError(null)
     try {
-      // Delete associated images from storage first
-      const { data: images } = await supabase
-        .from('project_images')
-        .select('image_url')
-        .eq('project_id', id)
-
-      if (images && images.length > 0) {
-        const filePaths = images.map(img => img.image_url.split('/').pop()).filter(Boolean) as string[]
-        if (filePaths.length > 0) {
-          await supabase.storage.from('projects').remove(filePaths)
-        }
-      }
-
-      const { error } = await supabase.from('projects').delete().eq('id', id)
-      if (error) throw error
-
+      const response = await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'فشل في حذف المشروع')
       setProjects(prev => prev.filter(p => p.id !== id))
+      if (result.cleanup?.failed) {
+        setError('تم حذف المشروع من قاعدة البيانات، لكن تعذر حذف بعض صور Cloudinary. أعد المحاولة من تنبيه التنظيف.')
+      }
+      await fetchCleanupStatus()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل في حذف المشروع')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -96,6 +123,15 @@ export default function DashboardPage() {
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
+        </div>
+      )}
+
+      {cleanupPending > 0 && (
+        <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <span>{cleanupPending} صورة Cloudinary تنتظر تنظيفًا آمنًا بعد حذف أو استبدال الصور.</span>
+          <button type="button" onClick={retryCloudinaryCleanup} disabled={cleanupBusy} className="rounded-md bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-50">
+            {cleanupBusy ? 'جارٍ إعادة المحاولة...' : 'إعادة محاولة التنظيف'}
+          </button>
         </div>
       )}
 
@@ -173,10 +209,12 @@ export default function DashboardPage() {
                     </Link>
                     <button
                       onClick={() => handleDelete(project.id)}
+                      disabled={deletingId === project.id}
+                      aria-label={`حذف ${project.title}`}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       title="حذف المشروع"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {deletingId === project.id ? <span className="text-xs">...</span> : <Trash2 className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>

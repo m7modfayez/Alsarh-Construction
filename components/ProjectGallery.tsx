@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProjectGalleryProps } from "@/types";
+import {
+  getAdjacentGalleryIndex,
+  getGalleryKeyAction,
+} from "@/lib/gallery-navigation";
 
 /**
  * Project Gallery Component
@@ -11,28 +15,47 @@ import { ProjectGalleryProps } from "@/types";
  */
 export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openingButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isLightboxOpen = selectedIndex !== null;
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const action = getGalleryKeyAction(event.key);
+      if (action === "close") {
+        setSelectedIndex(null);
+      } else if (action && images.length > 1) {
+        setSelectedIndex((index) =>
+          index === null
+            ? null
+            : getAdjacentGalleryIndex(index, action, images.length),
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      openingButtonRef.current?.focus();
+    };
+  }, [images.length, isLightboxOpen]);
 
   const handlePrevious = () => {
-    if (selectedIndex !== null) {
-      setSelectedIndex(
-        selectedIndex === 0 ? images.length - 1 : selectedIndex - 1,
-      );
-    }
+    setSelectedIndex((index) =>
+      index === null
+        ? null
+        : getAdjacentGalleryIndex(index, "previous", images.length),
+    );
   };
 
   const handleNext = () => {
-    if (selectedIndex !== null) {
-      setSelectedIndex(
-        selectedIndex === images.length - 1 ? 0 : selectedIndex + 1,
-      );
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (selectedIndex === null) return;
-    if (e.key === "ArrowLeft") handlePrevious();
-    if (e.key === "ArrowRight") handleNext();
-    if (e.key === "Escape") setSelectedIndex(null);
+    setSelectedIndex((index) =>
+      index === null ? null : getAdjacentGalleryIndex(index, "next", images.length),
+    );
   };
 
   return (
@@ -42,7 +65,10 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
         {images.map((image, index) => (
           <button
             key={index}
-            onClick={() => setSelectedIndex(index)}
+            onClick={(event) => {
+              openingButtonRef.current = event.currentTarget;
+              setSelectedIndex(index);
+            }}
             className="relative h-48 sm:h-56 md:h-64 lg:h-72 rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
             aria-label={`View ${title} image ${index + 1}`}
           >
@@ -83,14 +109,13 @@ export default function ProjectGallery({ images, title }: ProjectGalleryProps) {
         <div
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
           onClick={() => setSelectedIndex(null)}
-          onKeyDown={handleKeyDown}
-          tabIndex={0}
           role="dialog"
           aria-modal="true"
           aria-label="Image lightbox"
         >
           {/* Close Button */}
           <button
+            ref={closeButtonRef}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedIndex(null);

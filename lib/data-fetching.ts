@@ -6,6 +6,10 @@ import { supabaseServer } from "./supabaseserver";
 // hits Supabase directly — even for the same data. Now cached at the framework level.
 const REVALIDATE_SECONDS = 60;
 
+function missingImageOrderColumn(error: { message?: string } | null): boolean {
+  return Boolean(error?.message?.includes("image_order") && error.message.includes("does not exist"));
+}
+
 function transformProject(raw: any): Project {
   const coverImage =
     raw.project_images?.find((img: any) => img.is_cover)?.image_url ||
@@ -38,15 +42,20 @@ function transformProject(raw: any): Project {
 // hitting Supabase on every single request.
 export const getFeaturedProjects = unstable_cache(
   async (): Promise<Project[]> => {
-    const { data, error } = await supabaseServer
-      .from("projects")
-      .select(
-        `id, title, description, location, year, cover_image, is_featured,
-       project_images(image_url, is_cover)`,
-      )
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(3);
+    const fetchProjects = (withImageOrder: boolean) => {
+      let query = supabaseServer
+        .from("projects")
+        .select(
+          `id, title, description, location, year, cover_image, is_featured,
+         project_images(image_url, is_cover)`,
+        )
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (withImageOrder) query = query.order("image_order", { referencedTable: "project_images", ascending: true });
+      return query.limit(3);
+    };
+    let { data, error } = await fetchProjects(true);
+    if (missingImageOrderColumn(error)) ({ data, error } = await fetchProjects(false));
 
     if (error) {
       console.error("[getFeaturedProjects]", error.message);
@@ -80,16 +89,21 @@ export const getPaginatedProjects = unstable_cache(
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, error, count } = await supabaseServer
-      .from("projects")
-      .select(
-        `id, title, description, location, year, cover_image, is_featured,
-         project_images(image_url, is_cover)`,
-        { count: "exact" },
-      )
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .range(from, to);
+    const fetchProjects = (withImageOrder: boolean) => {
+      let query = supabaseServer
+        .from("projects")
+        .select(
+          `id, title, description, location, year, cover_image, is_featured,
+           project_images(image_url, is_cover)`,
+          { count: "exact" },
+        )
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (withImageOrder) query = query.order("image_order", { referencedTable: "project_images", ascending: true });
+      return query.range(from, to);
+    };
+    let { data, error, count } = await fetchProjects(true);
+    if (missingImageOrderColumn(error)) ({ data, error, count } = await fetchProjects(false));
 
     if (error) {
       console.error("[getPaginatedProjects]", error.message);
@@ -113,14 +127,20 @@ export const getPaginatedProjects = unstable_cache(
 
 export const getAllProjects = unstable_cache(
   async (): Promise<Project[]> => {
-    const { data, error } = await supabaseServer
-      .from("projects")
-      .select(
-        `id, title, description, location, year, cover_image, is_featured,
-       project_images(image_url, is_cover)`,
-      )
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false });
+    const fetchProjects = (withImageOrder: boolean) => {
+      let query = supabaseServer
+        .from("projects")
+        .select(
+          `id, title, description, location, year, cover_image, is_featured,
+         project_images(image_url, is_cover)`,
+        )
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (withImageOrder) query = query.order("image_order", { referencedTable: "project_images", ascending: true });
+      return query;
+    };
+    let { data, error } = await fetchProjects(true);
+    if (missingImageOrderColumn(error)) ({ data, error } = await fetchProjects(false));
 
     if (error) {
       console.error("[getAllProjects]", error.message);
@@ -157,16 +177,21 @@ export const getProject = unstable_cache(
 
 export const getRelatedProjects = unstable_cache(
   async (excludeId: string): Promise<Project[]> => {
-    const { data, error } = await supabaseServer
-      .from("projects")
-      .select(
-        `id, title, description, location, year, cover_image, is_featured,
-       project_images(image_url, is_cover)`,
-      )
-      .neq("id", excludeId)
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(3);
+    const fetchProjects = (withImageOrder: boolean) => {
+      let query = supabaseServer
+        .from("projects")
+        .select(
+          `id, title, description, location, year, cover_image, is_featured,
+         project_images(image_url, is_cover)`,
+        )
+        .neq("id", excludeId)
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (withImageOrder) query = query.order("image_order", { referencedTable: "project_images", ascending: true });
+      return query.limit(3);
+    };
+    let { data, error } = await fetchProjects(true);
+    if (missingImageOrderColumn(error)) ({ data, error } = await fetchProjects(false));
 
     if (error) {
       console.error("[getRelatedProjects]", error.message);

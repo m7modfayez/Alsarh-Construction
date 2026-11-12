@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Upload, X, ArrowLeft, Save } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { Upload, X, ArrowLeft, Save, ArrowUp, ArrowDown } from "lucide-react";
 
 interface UploadedImage {
   file: File;
-  url: string;
+  previewUrl: string;
   isCover: boolean;
 }
 
@@ -26,51 +25,46 @@ export default function AddProjectPage() {
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [isFeatured, setIsFeatured] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const submittingRef = useRef(false);
+  const projectIdRef = useRef<string | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    setLoading(true);
     setError(null);
-
-    try {
-      const isFirstBatch = uploadedImages.length === 0;
-
-      // ✅ FIX: Upload all files in PARALLEL using Promise.all instead of a sequential
-      // for-loop. For 5 images the old code made 5 sequential round-trips (each waiting
-      // for the previous to finish). Now all uploads run concurrently.
-      const uploadPromises = files.map(async (file, index) => {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("projects")
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("projects").getPublicUrl(fileName);
-
-        return {
-          file,
-          url: publicUrl,
-          // First image of the first batch becomes the cover by default
-          isCover: isFirstBatch && index === 0,
-        } as UploadedImage;
-      });
-
-      const newImages = await Promise.all(uploadPromises);
-      setUploadedImages((prev) => [...prev, ...newImages]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل في رفع الصور");
-    } finally {
-      setLoading(false);
+    const unsupported = files.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    if (unsupported) {
+      setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP.");
+      e.target.value = "";
+      return;
     }
+    const tooLarge = files.find((file) => file.size === 0 || file.size > 10 * 1024 * 1024);
+    if (tooLarge) {
+      setError("يجب ألا يتجاوز حجم الصورة الواحدة 10 ميجابايت.");
+      e.target.value = "";
+      return;
+    }
+    if (uploadedImages.length + files.length > 20 ||
+        uploadedImages.reduce((sum, image) => sum + image.file.size, 0) + files.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) {
+      setError("الحد الأقصى 20 صورة وإجمالي 30 ميجابايت للمشروع.");
+      e.target.value = "";
+      return;
+    }
+
+    const shouldSetFirstCover = uploadedImages.length === 0;
+    const drafts = files.map((file, index) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      isCover: shouldSetFirstCover && index === 0,
+    }));
+    setUploadedImages((prev) => [...prev, ...drafts]);
+    e.target.value = "";
   };
 
   const handleRemoveImage = (index: number) => {
+    const removedPreview = uploadedImages[index]?.previewUrl;
+    if (removedPreview) URL.revokeObjectURL(removedPreview);
     setUploadedImages((prev) => {
       const newImages = prev.filter((_, i) => i !== index);
       // If removing cover image, make first remaining image the cover
@@ -78,6 +72,16 @@ export default function AddProjectPage() {
         newImages[0] = { ...newImages[0], isCover: true };
       }
       return newImages;
+    });
+  };
+
+  const handleMoveImage = (index: number, offset: number) => {
+    setUploadedImages((prev) => {
+      const target = index + offset;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
     });
   };
 
@@ -89,6 +93,7 @@ export default function AddProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
 
     if (!title.trim() || !location.trim() || !year.trim()) {
       setError("الرجاء ملء جميع الحقول المطلوبة");
@@ -107,49 +112,39 @@ export default function AddProjectPage() {
     }
 
     setLoading(true);
+    submittingRef.current = true;
     setError(null);
 
     try {
-      // Create project
-      const { data: project, error: projectError } = await supabase
-        .from("projects")
-        .insert({
-          title: title.trim(),
-          description: description.trim(),
-          location: location.trim(),
-          year: parseInt(year),
-          cover_image: coverImage.url,
-          is_featured: isFeatured,
-          scope_of_work: scopeOfWork.trim()
-            ? scopeOfWork
-                .trim()
-                .split(/[\+,\u2022]/)
-                .map((item) => item.trim())
-                .filter((item) => item.length > 0)
-            : [],
-        })
-        .select()
-        .single();
-
-      if (projectError) throw projectError;
-
-      // Save all images to project_images table
-      const imageRecords = uploadedImages.map((img) => ({
-        project_id: project.id,
-        image_url: img.url,
-        is_cover: img.isCover,
+      projectIdRef.current ??= crypto.randomUUID();
+      const formData = new FormData();
+      formData.set("projectId", projectIdRef.current);
+      formData.set("project", JSON.stringify({
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        year: Number(year),
+        is_featured: isFeatured,
+        scope_of_work: scopeOfWork.trim()
+          ? scopeOfWork.trim().split(/[\+,\u2022]/).map((item) => item.trim()).filter(Boolean)
+          : [],
       }));
+      formData.set("expectedUpdatedAt", "");
+      formData.set("images", JSON.stringify(uploadedImages.map((img, index) => ({
+        fileIndex: index,
+        is_cover: img.isCover,
+        image_order: index,
+      }))));
+      uploadedImages.forEach(({ file }) => formData.append("files", file, file.name));
 
-      const { error: imagesError } = await supabase
-        .from("project_images")
-        .insert(imageRecords);
-
-      if (imagesError) throw imagesError;
-
+      const response = await fetch("/api/admin/projects", { method: "POST", body: formData });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "فشل في حفظ المشروع");
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل في حفظ المشروع");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -170,7 +165,7 @@ export default function AddProjectPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
         </div>
       )}
@@ -276,7 +271,7 @@ export default function AddProjectPage() {
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageUpload}
                 className="hidden"
                 disabled={loading}
@@ -302,9 +297,10 @@ export default function AddProjectPage() {
                   <div key={index} className="relative group">
                     <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
                       <Image
-                        src={image.url}
+                        src={image.previewUrl}
                         alt={`Uploaded ${index + 1}`}
                         fill
+                        unoptimized
                         sizes="(max-width: 768px) 50vw, 25vw"
                         className="object-cover"
                       />
@@ -329,6 +325,24 @@ export default function AddProjectPage() {
                           <span className="text-xs">📷</span>
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleMoveImage(index, -1)}
+                        disabled={index === 0 || loading}
+                        className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-40"
+                        title="تحريك الصورة للأعلى"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveImage(index, 1)}
+                        disabled={index === uploadedImages.length - 1 || loading}
+                        className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-40"
+                        title="تحريك الصورة للأسفل"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(index)}

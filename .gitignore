@@ -11,6 +11,9 @@ next.user-config.*
 .env
 .env*.local
 
+# Local output from the one-time Supabase to Cloudinary migration
+migration-data/cloudinary-project-images/
+
 # Common ignores
 node_modules
 .next/

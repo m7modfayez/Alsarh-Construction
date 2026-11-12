@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/auth";
 import Image from "next/image";
+import { isLoginFormReady } from "@/lib/login-form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,18 +14,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const submittingRef = useRef(false);
 
-  const supabase = createClient();
+  const [supabase] = useState(createClient);
+  const isFormReady = isLoginFormReady(email, password);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current || !isFormReady) return;
+
+    submittingRef.current = true;
     setError(null);
+    setSuccess(false);
     setIsLoading(true);
 
     try {
       const { data, error: signInError } =
         await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
 
@@ -39,16 +46,16 @@ export default function LoginPage() {
 
       if (data?.session) {
         setSuccess(true);
-        // Redirect to dashboard after successful login
-        setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
-        }, 500);
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        setError("لم يتم إنشاء جلسة تسجيل دخول. يرجى المحاولة مرة أخرى.");
       }
     } catch (err) {
       setError("حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.");
       console.error(err);
     } finally {
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -84,7 +91,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <div role="alert" className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
@@ -105,7 +112,10 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
                 placeholder="your.email@example.com"
                 required
                 disabled={isLoading}
@@ -122,7 +132,10 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError(null);
+                }}
                 placeholder="••••••••"
                 required
                 disabled={isLoading}
@@ -133,7 +146,7 @@ export default function LoginPage() {
             {/* Login Button */}
             <button
               type="submit"
-              disabled={isLoading || !email || !password}
+              disabled={isLoading || !isFormReady}
               className="w-full py-3 bg-[#d97706] hover:bg-[#b45309] text-white font-semibold rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-[#d97706]/20"
             >
               {isLoading ? (

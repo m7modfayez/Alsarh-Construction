@@ -1,24 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Upload, X, ArrowLeft, Save } from "lucide-react";
+import { Upload, X, ArrowLeft, Save, ArrowUp, ArrowDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 interface ProjectImage {
-  id?: string;
+  id: string;
   image_url: string;
+  cloudinary_public_id: string | null;
+  image_provider: "supabase" | "cloudinary";
+  image_order: number;
   is_cover: boolean;
 }
 
-interface UploadedImage {
-  file: File;
-  url: string;
+type ImageDraft = {
+  kind: "existing";
+  id: string;
+  image_url: string;
+  cloudinary_public_id: string | null;
+  image_provider: "supabase" | "cloudinary";
+  image_order: number;
   isCover: boolean;
-  isNew: boolean;
-}
+} | {
+  kind: "new";
+  file: File;
+  previewUrl: string;
+  isCover: boolean;
+};
 
 interface Project {
   id: string;
@@ -28,6 +39,9 @@ interface Project {
   year: number;
   cover_image: string;
   scope_of_work?: string;
+  updated_at: string;
+  cover_image_public_id: string | null;
+  cover_image_provider: "supabase" | "cloudinary";
 }
 
 export default function EditProjectPage() {
@@ -37,6 +51,7 @@ export default function EditProjectPage() {
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form fields
@@ -47,8 +62,7 @@ export default function EditProjectPage() {
   const [year, setYear] = useState("");
   const [scopeOfWork, setScopeOfWork] = useState("");
   const [isFeatured, setIsFeatured] = useState(false);
-  const [existingImages, setExistingImages] = useState<ProjectImage[]>([]);
-  const [newImages, setNewImages] = useState<UploadedImage[]>([]);
+  const [images, setImages] = useState<ImageDraft[]>([]);
 
   useEffect(() => {
     fetchProject();
@@ -69,7 +83,8 @@ export default function EditProjectPage() {
       const { data: imagesData, error: imagesError } = await supabase
         .from("project_images")
         .select("*")
-        .eq("project_id", projectId);
+        .eq("project_id", projectId)
+        .order("image_order", { ascending: true });
 
       if (imagesError) throw imagesError;
 
@@ -84,7 +99,15 @@ export default function EditProjectPage() {
           ? projectData.scope_of_work.join(" + ")
           : projectData.scope_of_work || "",
       );
-      setExistingImages(imagesData || []);
+      setImages((imagesData || []).map((image: ProjectImage) => ({
+        kind: "existing" as const,
+        id: image.id,
+        image_url: image.image_url,
+        cloudinary_public_id: image.cloudinary_public_id,
+        image_provider: image.image_provider,
+        image_order: image.image_order,
+        isCover: image.is_cover,
+      })));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "فشل في جلب بيانات المشروع",
@@ -98,119 +121,78 @@ export default function EditProjectPage() {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    setLoading(true);
     setError(null);
-
-    try {
-      // ✅ FIX: Upload all files in PARALLEL instead of a sequential for-loop.
-      // For multiple images, this is significantly faster.
-      const uploadPromises = files.map(async (file) => {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}-${file.name}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("projects")
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("projects").getPublicUrl(fileName);
-
-        return {
-          file,
-          url: publicUrl,
-          isCover: false,
-          isNew: true,
-        } as UploadedImage;
-      });
-
-      const uploadedNewImages = await Promise.all(uploadPromises);
-      setNewImages((prev) => [...prev, ...uploadedNewImages]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل في رفع الصور");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRemoveExistingImage = async (image: ProjectImage) => {
-    if (!confirm("هل أنت متأكد من حذف هذه الصورة؟")) return;
-
-    try {
-      if (image.id) {
-        const { error } = await supabase
-          .from("project_images")
-          .delete()
-          .eq("id", image.id);
-        if (error) throw error;
-      }
-
-      const filePath = image.image_url.split("/").pop();
-      if (filePath) {
-        await supabase.storage.from("projects").remove([filePath]);
-      }
-
-      setExistingImages((prev) =>
-        prev.filter((img) => img.image_url !== image.image_url),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل في حذف الصورة");
-    }
-  };
-
-  const handleRemoveNewImage = (index: number) => {
-    setNewImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSetCover = (imageUrl: string, isNew: boolean) => {
-    if (isNew) {
-      setExistingImages((prev) =>
-        prev.map((img) => ({ ...img, is_cover: false })),
-      );
-      setNewImages((prev) =>
-        prev.map((img) => ({ ...img, isCover: img.url === imageUrl })),
-      );
+    const unsupported = files.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    const tooLarge = files.find((file) => file.size === 0 || file.size > 10 * 1024 * 1024);
+    if (unsupported) setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP.");
+    else if (tooLarge) setError("يجب ألا يتجاوز حجم الصورة الواحدة 10 ميجابايت.");
+    else if (images.length + files.length > 20 ||
+      images.reduce((sum, image) => sum + (image.kind === "new" ? image.file.size : 0), 0) + files.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) {
+      setError("الحد الأقصى 20 صورة وإجمالي 30 ميجابايت للمشروع.");
     } else {
-      setExistingImages((prev) =>
-        prev.map((img) => ({ ...img, is_cover: img.image_url === imageUrl })),
-      );
-      setNewImages((prev) => prev.map((img) => ({ ...img, isCover: false })));
+      const drafts = files.map((file) => ({
+        kind: "new" as const,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        isCover: false,
+      }));
+      setImages((prev) => [...prev, ...drafts]);
     }
+    e.target.value = "";
   };
+
+  const handleRemoveImage = (index: number) => {
+    const image = images[index];
+    if (image?.kind === "new") URL.revokeObjectURL(image.previewUrl);
+    setImages((prev) => {
+      const next = prev.filter((_, imageIndex) => imageIndex !== index);
+      if (image?.isCover && next.length > 0) next[0] = { ...next[0], isCover: true };
+      return next.map((item, imageIndex) => item.kind === "existing"
+        ? { ...item, image_order: imageIndex }
+        : item);
+    });
+  };
+
+  const handleSetCover = (index: number) => setImages((prev) => prev.map((image, i) => ({ ...image, isCover: i === index })));
+
+  const handleMoveImage = (index: number, offset: number) => setImages((prev) => {
+    const target = index + offset;
+    if (target < 0 || target >= prev.length) return prev;
+    const next = [...prev];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next.map((image, i) => image.kind === "existing" ? { ...image, image_order: i } : image);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
 
     if (!title.trim() || !location.trim() || !year.trim()) {
       setError("الرجاء ملء جميع الحقول المطلوبة");
       return;
     }
 
-    const allImages = [...existingImages, ...newImages];
-    if (allImages.length === 0) {
+    if (images.length === 0) {
       setError("يجب أن يحتوي المشروع على صورة واحدة على الأقل");
       return;
     }
 
-    const hasCover =
-      existingImages.some((img) => img.is_cover) ||
-      newImages.some((img) => img.isCover);
+    const hasCover = images.some((img) => img.isCover);
     if (!hasCover) {
       setError("الرجاء اختيار صورة غلاف");
       return;
     }
 
     setLoading(true);
+    submittingRef.current = true;
     setError(null);
 
     try {
-      const coverImage =
-        existingImages.find((img) => img.is_cover)?.image_url ||
-        newImages.find((img) => img.isCover)?.url ||
-        project?.cover_image;
-
-      const updateData: any = {
+      if (!project) throw new Error("تعذر تحميل بيانات المشروع");
+      const formData = new FormData();
+      formData.set("projectId", projectId);
+      formData.set("expectedUpdatedAt", project.updated_at);
+      formData.set("project", JSON.stringify({
         title: title.trim(),
         description: description.trim(),
         location: location.trim(),
@@ -223,49 +205,26 @@ export default function EditProjectPage() {
               .map((item) => item.trim())
               .filter((item) => item.length > 0)
           : [],
-      };
-
-      if (coverImage) {
-        updateData.cover_image = coverImage;
-      }
-
-      const { error: updateError } = await supabase
-        .from("projects")
-        .update(updateData)
-        .eq("id", projectId);
-
-      if (updateError)
-        throw new Error(updateError.message || "Failed to update project");
-
-      // Add new images to database
-      if (newImages.length > 0) {
-        const imageRecords = newImages.map((img) => ({
-          project_id: projectId,
-          image_url: img.url,
-          is_cover: img.isCover,
-        }));
-
-        const { error: imagesError } = await supabase
-          .from("project_images")
-          .insert(imageRecords);
-
-        if (imagesError) throw imagesError;
-      }
-
-      // Update existing images cover status
-      const coverImageUrl = newImages.find((img) => img.isCover)?.url;
-      if (coverImageUrl) {
-        await supabase
-          .from("project_images")
-          .update({ is_cover: false })
-          .eq("project_id", projectId)
-          .neq("image_url", coverImageUrl);
-      }
-
+      }));
+      const files: File[] = [];
+      const descriptors = images.map((image, index) => {
+        if (image.kind === "existing") {
+          return { id: image.id, is_cover: image.isCover, image_order: index };
+        }
+        const fileIndex = files.length;
+        files.push(image.file);
+        return { fileIndex, is_cover: image.isCover, image_order: index };
+      });
+      formData.set("images", JSON.stringify(descriptors));
+      files.forEach((file) => formData.append("files", file, file.name));
+      const response = await fetch(`/api/admin/projects/${projectId}`, { method: "PUT", body: formData });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "فشل في تحديث المشروع");
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل في تحديث المشروع");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -308,7 +267,7 @@ export default function EditProjectPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
         </div>
       )}
@@ -404,61 +363,10 @@ export default function EditProjectPage() {
           </div>
         </div>
 
-        {/* Existing Images */}
-        {existingImages.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              الصور الحالية
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {existingImages.map((image) => (
-                <div key={image.image_url} className="relative group">
-                  <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                    <Image
-                      src={image.image_url}
-                      alt="Project image"
-                      fill
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                      className="object-cover"
-                    />
-                  </div>
-
-                  {image.is_cover && (
-                    <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                      صورة الغلاف
-                    </div>
-                  )}
-
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-reverse space-x-2">
-                    {!image.is_cover && (
-                      <button
-                        type="button"
-                        onClick={() => handleSetCover(image.image_url, false)}
-                        className="p-2 bg-white rounded-full hover:bg-gray-100"
-                        title="تعيين كصورة غلاف"
-                      >
-                        <span className="text-xs">📷</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveExistingImage(image)}
-                      className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
-                      title="حذف الصورة"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* New Images Upload */}
+        {/* Project Images */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            إضافة صور جديدة
+            صور المشروع
           </h2>
 
           <div className="mb-6">
@@ -466,7 +374,7 @@ export default function EditProjectPage() {
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageUpload}
                 className="hidden"
                 disabled={loading}
@@ -481,55 +389,26 @@ export default function EditProjectPage() {
             </label>
           </div>
 
-          {newImages.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                الصور الجديدة ({newImages.length})
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {newImages.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                      <Image
-                        src={image.url}
-                        alt={`New uploaded ${index + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 50vw, 25vw"
-                        className="object-cover"
-                      />
-                    </div>
-
-                    {image.isCover && (
-                      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                        صورة الغلاف
-                      </div>
-                    )}
-
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-reverse space-x-2">
-                      {!image.isCover && (
-                        <button
-                          type="button"
-                          onClick={() => handleSetCover(image.url, true)}
-                          className="p-2 bg-white rounded-full hover:bg-gray-100"
-                          title="تعيين كصورة غلاف"
-                        >
-                          <span className="text-xs">📷</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveNewImage(index)}
-                        className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600"
-                        title="حذف الصورة"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
+          <p className="text-xs text-gray-500 mb-4">إزالة الصور وترتيبها وتغيير الغلاف تُحفظ مع زر تحديث المشروع.</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {images.map((image, index) => {
+              const src = image.kind === "existing" ? image.image_url : image.previewUrl;
+              return (
+                <div key={image.kind === "existing" ? image.id : image.previewUrl} className="relative group">
+                  <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
+                    <Image src={src} alt={`صورة المشروع ${index + 1}`} fill unoptimized={image.kind === "new"} sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  {image.isCover && <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">صورة الغلاف</div>}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                    {!image.isCover && <button type="button" onClick={() => handleSetCover(index)} disabled={loading} className="p-2 bg-white rounded-full hover:bg-gray-100" title="تعيين كصورة غلاف" aria-label={`تعيين الصورة ${index + 1} كغلاف`}><span>📷</span></button>}
+                    <button type="button" onClick={() => handleMoveImage(index, -1)} disabled={loading || index === 0} className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-40" title="تحريك للأعلى" aria-label={`تحريك الصورة ${index + 1} للأعلى`}><ArrowUp className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => handleMoveImage(index, 1)} disabled={loading || index === images.length - 1} className="p-2 bg-white rounded-full hover:bg-gray-100 disabled:opacity-40" title="تحريك للأسفل" aria-label={`تحريك الصورة ${index + 1} للأسفل`}><ArrowDown className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => handleRemoveImage(index)} disabled={loading} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600" title="إزالة الصورة" aria-label={`إزالة الصورة ${index + 1}`}><X className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Submit */}

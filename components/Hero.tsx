@@ -6,10 +6,8 @@ import { useState, useEffect } from "react";
 
 export default function Hero() {
   const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);
@@ -23,17 +21,15 @@ export default function Hero() {
     <section className="relative w-full h-screen min-h-[700px] flex items-center overflow-hidden bg-[#0c0a09]">
       {/* Background Image */}
       <div className="absolute inset-0">
-        {mounted && (
-          <Image
-            src={bgImage}
-            alt="الصرح للإنشاءات"
-            fill
-            className="object-cover object-center"
-            priority
-            sizes="100vw"
-            quality={85}
-          />
-        )}
+        <Image
+          src={bgImage}
+          alt="الصرح للإنشاءات"
+          fill
+          className="object-cover object-center"
+          priority
+          sizes="100vw"
+          quality={85}
+        />
         {/* Sophisticated overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0c0a09]/90 via-[#0c0a09]/70 to-[#0c0a09]/50" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0c0a09] via-transparent to-transparent" />
