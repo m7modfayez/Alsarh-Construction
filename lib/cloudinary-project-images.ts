@@ -1,21 +1,27 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { v2 as cloudinary } from "cloudinary";
-import {
-  cloudinaryPublicId,
-  ImageUploadError,
-  type UploadedCloudinaryAsset,
-} from "@/lib/project-image-lifecycle";
+import type { UploadApiResponse } from "cloudinary";
+import type { UploadedCloudinaryAsset } from "@/lib/project-image-validation";
 
 const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+const CLOUDINARY_DELETE_TIMEOUT_MS = 15_000;
 const WEBP_QUALITY = 80;
+const SUPPORTED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 export interface CloudinaryUploadInput {
   projectId: string;
   bytes: Buffer;
   contentType: string;
+}
+
+export class CloudinaryImageUploadError extends Error {
+  constructor(message: string, readonly publicId: string) {
+    super(message);
+    this.name = "CloudinaryImageUploadError";
+  }
 }
 
 function required(name: "CLOUDINARY_CLOUD_NAME" | "CLOUDINARY_API_KEY" | "CLOUDINARY_API_SECRET"): string {
@@ -33,12 +39,15 @@ function configureCloudinary() {
   });
 }
 
-function sha256(bytes: Buffer): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
 function sanitizeError(error: unknown): string {
-  const message = error instanceof Error ? error.message : "Cloudinary request failed";
+  let message = "Cloudinary request failed";
+  if (error instanceof Error) {
+    message = error.message;
+  } else if (typeof error === "object" && error !== null) {
+    const candidate = error as { message?: unknown; error?: { message?: unknown } };
+    if (typeof candidate.message === "string") message = candidate.message;
+    else if (typeof candidate.error?.message === "string") message = candidate.error.message;
+  }
   return [process.env.CLOUDINARY_API_SECRET, process.env.CLOUDINARY_API_KEY]
     .filter((secret): secret is string => Boolean(secret))
     .reduce((clean, secret) => clean.split(secret).join("[redacted]"), message);
@@ -50,21 +59,14 @@ function validDeliveryUrl(url: string, publicId: string): boolean {
     if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") return false;
     const prefix = `/${required("CLOUDINARY_CLOUD_NAME")}/image/upload/`;
     if (!parsed.pathname.startsWith(prefix)) return false;
-    const path = parsed.pathname.slice(prefix.length).replace(/^v\d+\//, "");
-    return path === `${publicId}.webp`;
+    const assetPath = parsed.pathname.slice(prefix.length).replace(/^v\d+\//, "");
+    return assetPath === `${publicId}.webp`;
   } catch {
     return false;
   }
 }
 
-async function verifyDelivery(secureUrl: string, expectedHash: string): Promise<boolean> {
-  const response = await fetch(secureUrl, { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) return false;
-  const digest = sha256(Buffer.from(await response.arrayBuffer()));
-  return digest === expectedHash;
-}
-
-function uploadStream(buffer: Buffer, publicId: string, sourceHash: string, optimizedHash: string): Promise<any> {
+function uploadStream(buffer: Buffer, publicId: string): Promise<UploadApiResponse> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
@@ -74,65 +76,41 @@ function uploadStream(buffer: Buffer, publicId: string, sourceHash: string, opti
         format: "webp",
         overwrite: false,
         unique_filename: false,
-        context: `source_sha256=${sourceHash}|optimized_sha256=${optimizedHash}|optimizer=webp80-v1`,
       },
-      (error: Error | undefined, result: any) => {
+      (error, result) => {
         if (error) reject(error);
-        else resolve(result);
+        else if (result) resolve(result);
+        else reject(new Error("Cloudinary returned an empty upload response"));
       },
     );
     stream.end(buffer);
   });
 }
 
-function findExistingAsset(publicId: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    // Cloudinary SDK 2.11 runtime signature is (public_id, callback, options).
-    // The installed Cloudinary 2.11 runtime has the callback before options,
-    // while its declaration file exposes options before callback. Keep this
-    // call explicitly typed to the runtime signature verified in node_modules.
-    (cloudinary.api.resource as unknown as (
-      publicId: string,
-      callback: (error?: Error, result?: any) => void,
-      options: { resource_type: "image"; type: "upload"; context: true },
-    ) => unknown)(
-      publicId,
-      (error, result) => (error ? reject(error) : resolve(result)),
-      { resource_type: "image", type: "upload", context: true },
-    );
-  });
-}
-
-function isAlreadyExistsError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const value = error as { http_code?: number; message?: string };
-  return value.http_code === 409 || /already exists|public.?id.*exist/i.test(value.message ?? "");
-}
-
-async function optimizeAndIdentify(input: CloudinaryUploadInput) {
+async function optimizeImage(input: CloudinaryUploadInput): Promise<Buffer> {
   if (!input.bytes.byteLength || input.bytes.byteLength > MAX_SOURCE_BYTES) {
     throw new Error("Image must be between 1 byte and 10 MiB");
   }
-  if (!["image/jpeg", "image/png", "image/webp"].includes(input.contentType)) {
-    throw new Error("Only JPEG, PNG, and WebP images are supported");
+  if (!SUPPORTED_MIME_TYPES.includes(input.contentType)) {
+    throw new Error("Only JPEG, PNG, WebP, and AVIF images are supported");
   }
 
-  const sourceHash = sha256(input.bytes);
   const image = sharp(input.bytes, { limitInputPixels: 40_000_000 });
   const metadata = await image.metadata();
-  if (!metadata.format || !["jpeg", "png", "webp"].includes(metadata.format)) {
-    throw new Error("Uploaded contents are not a supported image");
-  }
-  if ((metadata.pages ?? 1) > 1) {
-    throw new Error("Animated images are not supported");
-  }
+  const decodedFormat = metadata.format === "heif" && metadata.compression === "av1"
+    ? "avif"
+    : metadata.format;
   const formatForMime: Record<string, string> = {
     "image/jpeg": "jpeg",
     "image/png": "png",
     "image/webp": "webp",
+    "image/avif": "avif",
   };
-  if (metadata.format !== formatForMime[input.contentType]) {
+  if (!decodedFormat || decodedFormat !== formatForMime[input.contentType]) {
     throw new Error("Uploaded file content does not match its declared image type");
+  }
+  if ((metadata.pages ?? 1) > 1) {
+    throw new Error("Animated images are not supported");
   }
 
   const optimized = await image
@@ -140,89 +118,65 @@ async function optimizeAndIdentify(input: CloudinaryUploadInput) {
     .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true })
     .webp({ quality: WEBP_QUALITY })
     .toBuffer();
-  const optimizedHash = sha256(optimized);
-  return {
-    optimized,
-    sourceHash,
-    optimizedHash,
-    publicId: cloudinaryPublicId(input.projectId, sourceHash),
-  };
+  if ((await sharp(optimized).metadata()).format !== "webp") {
+    throw new Error("Image encoder did not produce a WebP file");
+  }
+  return optimized;
+}
+
+function validateUploadResponse(asset: UploadApiResponse, expectedPrefix: string): UploadedCloudinaryAsset {
+  if (
+    asset.resource_type !== "image" ||
+    asset.type !== "upload" ||
+    asset.format !== "webp" ||
+    typeof asset.public_id !== "string" ||
+    !asset.public_id.startsWith(expectedPrefix) ||
+    !validDeliveryUrl(asset.secure_url, asset.public_id)
+  ) {
+    throw new Error("Cloudinary returned an invalid image identity or secure WebP URL");
+  }
+  return { publicId: asset.public_id, secureUrl: asset.secure_url };
 }
 
 export async function uploadProjectImage(input: CloudinaryUploadInput): Promise<UploadedCloudinaryAsset> {
   configureCloudinary();
-  const { optimized, sourceHash, optimizedHash, publicId } = await optimizeAndIdentify(input);
-  let asset: any;
-  let reused = false;
-
+  const optimized = await optimizeImage(input);
+  const expectedPrefix = `projects/${input.projectId}/`;
+  const requestedPublicId = `${expectedPrefix}${randomUUID()}`;
   try {
-    asset = await uploadStream(optimized, publicId, sourceHash, optimizedHash);
+    const response = await uploadStream(optimized, requestedPublicId);
+    return validateUploadResponse(response, expectedPrefix);
   } catch (error) {
-    if (!isAlreadyExistsError(error)) {
-      throw new ImageUploadError(`Cloudinary upload failed: ${sanitizeError(error)}`);
-    }
-    try {
-      asset = await findExistingAsset(publicId);
-      reused = true;
-    } catch (lookupError) {
-      throw new ImageUploadError(`Existing Cloudinary asset lookup failed: ${sanitizeError(lookupError)}`);
-    }
+    throw new CloudinaryImageUploadError(sanitizeError(error), requestedPublicId);
   }
-
-  const uploaded: UploadedCloudinaryAsset = {
-    publicId,
-    secureUrl: asset?.secure_url ?? "",
-    sourceSha256: sourceHash,
-    optimizedSha256: optimizedHash,
-    optimizedBytes: optimized.byteLength,
-  };
-  if (
-    asset?.public_id !== publicId || asset?.resource_type !== "image" || asset?.type !== "upload" ||
-    asset?.format !== "webp" || !validDeliveryUrl(uploaded.secureUrl, publicId)
-  ) {
-    if (!reused && uploaded.secureUrl) {
-      throw new ImageUploadError("Cloudinary upload response failed identity validation", uploaded);
-    }
-    throw new ImageUploadError("Cloudinary asset identity or secure WebP URL is invalid");
-  }
-
-  try {
-    if (!(await verifyDelivery(uploaded.secureUrl, optimizedHash))) {
-      if (!reused) throw new ImageUploadError("Cloudinary delivery content did not match the optimized image", uploaded);
-      throw new ImageUploadError("Existing Cloudinary asset content does not match this upload");
-    }
-  } catch (error) {
-    if (error instanceof ImageUploadError) throw error;
-    if (!reused) throw new ImageUploadError(`Cloudinary delivery verification failed: ${sanitizeError(error)}`, uploaded);
-    throw new ImageUploadError(`Existing Cloudinary delivery verification failed: ${sanitizeError(error)}`);
-  }
-  return uploaded;
 }
 
-export async function deleteCloudinaryImage(publicId: string): Promise<void> {
+export async function deleteCloudinaryImage(publicId: string): Promise<"deleted" | "not_found"> {
   configureCloudinary();
-  await new Promise<void>((resolve, reject) => {
-    // Cloudinary SDK 2.11 runtime signature is (public_id, callback, options).
-    (cloudinary.uploader.destroy as unknown as (
-      publicId: string,
-      callback: (error?: Error, result?: any) => void,
-      options: { resource_type: "image"; type: "upload"; invalidate: boolean },
-    ) => unknown)(
-      publicId,
-      (error, result) => {
-        if (error) return reject(error);
-        if (result?.result === "ok" || result?.result === "not found") return resolve();
-        return reject(new Error(`Unexpected Cloudinary delete result: ${result?.result ?? "empty"}`));
-      },
-      { resource_type: "image", type: "upload", invalidate: true },
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error(`Cloudinary deletion timed out after ${CLOUDINARY_DELETE_TIMEOUT_MS / 1000} seconds`)),
+      CLOUDINARY_DELETE_TIMEOUT_MS,
     );
   });
-}
 
-export function cloudinaryAccountName(): string {
-  return required("CLOUDINARY_CLOUD_NAME");
-}
+  try {
+    const result = await Promise.race([
+      cloudinary.uploader.destroy(publicId, {
+        resource_type: "image",
+        type: "upload",
+        invalidate: true,
+      }) as Promise<{ result?: string }>,
+      timeout,
+    ]);
 
-export function safeCloudinaryError(error: unknown): string {
-  return sanitizeError(error);
+    if (result.result === "ok") return "deleted";
+    if (result.result === "not found") return "not_found";
+    throw new Error(`Unexpected Cloudinary delete result: ${result.result ?? "empty"}`);
+  } catch (error) {
+    throw new Error(sanitizeError(error));
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }

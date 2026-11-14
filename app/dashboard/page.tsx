@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { Plus, Edit, Trash2, Eye } from 'lucide-react'
+import Image from '@/components/ResilientImage'
+import { Plus, Edit, Trash2, Eye, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
+import { runWithPendingState } from '@/lib/project-image-pending'
 
 interface Project {
   id: string
@@ -18,14 +19,12 @@ interface Project {
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [cleanupPending, setCleanupPending] = useState(0)
-  const [cleanupBusy, setCleanupBusy] = useState(false)
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(null)
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const deletingIdsRef = useRef(new Set<string>())
 
   useEffect(() => {
     fetchProjects()
-    fetchCleanupStatus()
   }, [])
 
   const fetchProjects = async () => {
@@ -40,58 +39,45 @@ export default function DashboardPage() {
       if (error) throw error
       setProjects(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في جلب المشاريع')
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'فشل في جلب المشاريع' })
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchCleanupStatus = async () => {
-    try {
-      const response = await fetch('/api/admin/cloudinary-cleanup')
-      if (!response.ok) return
-      const result = await response.json()
-      setCleanupPending(result.pending ?? 0)
-    } catch {
-      // Project listing remains usable when the optional cleanup status is unavailable.
-    }
-  }
-
-  const retryCloudinaryCleanup = async () => {
-    setCleanupBusy(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/admin/cloudinary-cleanup', { method: 'POST' })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'تعذرت إعادة محاولة تنظيف الصور')
-      await fetchCleanupStatus()
-      if (result.cleanup?.failed) setError('تمت العملية، لكن ما زالت بعض صور Cloudinary بحاجة إلى إعادة المحاولة.')
-      else setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذرت إعادة محاولة تنظيف الصور')
-    } finally {
-      setCleanupBusy(false)
-    }
-  }
-
   const handleDelete = async (id: string) => {
+    if (deletingIdsRef.current.has(id)) return
     if (!confirm('هل أنت متأكد من حذف هذا المشروع؟')) return
 
-    setDeletingId(id)
-    setError(null)
+    deletingIdsRef.current.add(id)
+    setNotification(null)
     try {
-      const response = await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'فشل في حذف المشروع')
+      const result = await runWithPendingState(async () => {
+        const response = await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'فشل في حذف المشروع')
+        return result
+      }, (pending) => {
+        setDeletingIds(prev => {
+          const next = new Set(prev)
+          if (pending) next.add(id)
+          else next.delete(id)
+          return next
+        })
+      })
       setProjects(prev => prev.filter(p => p.id !== id))
-      if (result.cleanup?.failed) {
-        setError('تم حذف المشروع من قاعدة البيانات، لكن تعذر حذف بعض صور Cloudinary. أعد المحاولة من تنبيه التنظيف.')
+      if (result.cloudinaryDeletion?.failed) {
+        const failures = Array.isArray(result.cloudinaryDeletion.failures) ? result.cloudinaryDeletion.failures.join('؛ ') : ''
+        setNotification({ type: 'warning', message: `تم حذف المشروع بنجاح، لكن تعذر تأكيد حذف بعض صور Cloudinary.${failures ? ` ${failures}` : ''}` })
+      } else if (result.cloudinaryDeletion?.referencedElsewhere?.length) {
+        setNotification({ type: 'success', message: 'تم حذف المشروع. أُبقيت صور Cloudinary التي لا تزال مستخدمة في مشاريع أخرى.' })
+      } else {
+        setNotification({ type: 'success', message: 'تم حذف المشروع بنجاح.' })
       }
-      await fetchCleanupStatus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل في حذف المشروع')
+      setNotification({ type: 'error', message: err instanceof Error ? err.message : 'فشل في حذف المشروع' })
     } finally {
-      setDeletingId(null)
+      deletingIdsRef.current.delete(id)
     }
   }
 
@@ -120,18 +106,18 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
-      )}
-
-      {cleanupPending > 0 && (
-        <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <span>{cleanupPending} صورة Cloudinary تنتظر تنظيفًا آمنًا بعد حذف أو استبدال الصور.</span>
-          <button type="button" onClick={retryCloudinaryCleanup} disabled={cleanupBusy} className="rounded-md bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-50">
-            {cleanupBusy ? 'جارٍ إعادة المحاولة...' : 'إعادة محاولة التنظيف'}
-          </button>
+      {notification && (
+        <div
+          role={notification.type === 'error' ? 'alert' : 'status'}
+          className={`mb-6 p-4 rounded-lg border ${
+            notification.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-700'
+              : notification.type === 'warning'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                : 'bg-green-50 border-green-200 text-green-700'
+          }`}
+        >
+          {notification.message}
         </div>
       )}
 
@@ -209,12 +195,15 @@ export default function DashboardPage() {
                     </Link>
                     <button
                       onClick={() => handleDelete(project.id)}
-                      disabled={deletingId === project.id}
+                      disabled={deletingIds.has(project.id)}
+                      aria-busy={deletingIds.has(project.id)}
                       aria-label={`حذف ${project.title}`}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="حذف المشروع"
+                      className="inline-flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-60"
+                      title={deletingIds.has(project.id) ? 'جارٍ حذف المشروع...' : 'حذف المشروع'}
                     >
-                      {deletingId === project.id ? <span className="text-xs">...</span> : <Trash2 className="h-4 w-4" />}
+                      {deletingIds.has(project.id)
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /><span className="text-xs">جارٍ الحذف...</span></>
+                        : <Trash2 className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>

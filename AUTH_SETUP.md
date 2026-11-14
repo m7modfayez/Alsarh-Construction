@@ -149,14 +149,11 @@ export async function GET(request: NextRequest) {
 
 ---
 
-## Creating Admin Users
+## Account Access
 
-1. Go to Supabase Dashboard → **Authentication** → **Users**
-2. Click **Add user**
-3. Enter email and password
-4. Click **Create user**
+Dashboard pages and admin API operations require a valid authenticated Supabase user. Any account that can sign in receives this access.
 
-These credentials can now be used to log in to the dashboard.
+Keep public signups disabled in the Supabase Auth settings. The project owner controls account creation through Supabase Dashboard → **Authentication** → **Users** → **Add user**. Only the owner should create or invite accounts because every authenticated account can access dashboard operations. The application login flow continues to use email and password; it does not provide a signup flow.
 
 ---
 

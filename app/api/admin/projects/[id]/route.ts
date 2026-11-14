@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireDashboardUser } from "@/lib/server/supabase-admin";
+import { dashboardAdminDeniedResponse, requireDashboardAdmin } from "@/lib/server/supabase-admin";
 import {
   deleteProjectMutation,
   projectMutationError,
@@ -14,8 +14,8 @@ interface RouteContext {
 
 export async function PUT(request: Request, { params }: RouteContext) {
   try {
-    const context = await requireDashboardUser();
-    if (!context) return NextResponse.json({ error: "تسجيل الدخول مطلوب" }, { status: 401 });
+    const context = await requireDashboardAdmin();
+    if (!context.authorized) return dashboardAdminDeniedResponse(context);
     const { id } = await params;
     return await saveProjectMutation(request, context.admin, true, id);
   } catch (error) {
@@ -25,8 +25,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
-    const context = await requireDashboardUser();
-    if (!context) return NextResponse.json({ error: "تسجيل الدخول مطلوب" }, { status: 401 });
+    const context = await requireDashboardAdmin();
+    if (!context.authorized) return dashboardAdminDeniedResponse(context);
     const { id } = await params;
     return await deleteProjectMutation(id, context.admin);
   } catch (error) {

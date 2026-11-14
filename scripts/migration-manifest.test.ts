@@ -6,7 +6,6 @@ import {
   createApplyManifest,
   executeApplyPass,
   executeRollbackPass,
-  EXPLICITLY_EXCLUDED_IMAGE_PATH,
   rowMatchesManifest,
   rowMatchesRollback,
   validateApplyManifest,
@@ -76,9 +75,9 @@ test("rollback matching requires the same row and expected Cloudinary URL", () =
   assert.equal(rowMatchesRollback(entry, "9c1973a1-ae1a-41d6-9cc0-5ea62cfe51d2", cloudUrl), false);
 });
 
-test("only the exact excluded path can be represented as excluded", () => {
+test("historical skipped journal rows remain readable without a path-specific rule", () => {
   const excluded = applyEntry({
-    originalPath: EXPLICITLY_EXCLUDED_IMAGE_PATH,
+    originalPath: "legacy-skipped.jpg",
     expectedCloudinarySecureUrl: "",
     cloudinaryPublicId: "",
     expectedOptimizedSha256: "",
@@ -87,11 +86,7 @@ test("only the exact excluded path can be represented as excluded", () => {
   });
   const manifest = createApplyManifest(migrationId, [excluded], "2026-11-11T10:00:00.000Z");
   assert.deepEqual(countManifestActions(validateApplyManifest(manifest)), { apply: 0, excluded: 1 });
-  const arbitrary = createApplyManifest(migrationId, [excluded], "2026-11-11T10:00:00.000Z");
-  arbitrary.entries[0].originalPath = "other-missing.jpg";
-  const { checksum: _checksum, ...payload } = arbitrary;
-  const recalculated = createApplyManifest(migrationId, payload.entries, arbitrary.createdAt);
-  assert.throws(() => validateApplyManifest(recalculated), /Only the configured image path/);
+  assert.equal(validateApplyManifest(manifest).entries[0].action, "exclude");
 });
 
 test("apply manifest mapping must retain the exact verified asset and hashes", () => {
@@ -117,7 +112,7 @@ test("resumes a partial apply from durable journal state without repeating a com
   const second = applyEntry({ rowId: "f21973a1-ae1a-41d6-9cc0-5ea62cfe51d2", originalPath: "second.jpg", expectedOriginalUrl: sourceUrl + "?second" });
   const excluded = applyEntry({
     rowId: "c21973a1-ae1a-41d6-9cc0-5ea62cfe51d2",
-    originalPath: EXPLICITLY_EXCLUDED_IMAGE_PATH,
+    originalPath: "legacy-skipped.jpg",
     expectedCloudinarySecureUrl: "",
     cloudinaryPublicId: "",
     expectedOptimizedSha256: "",
@@ -174,7 +169,7 @@ test("rollback sends only manifest rows and restores only journal-applied rows",
   const pending = applyEntry({ rowId: "f21973a1-ae1a-41d6-9cc0-5ea62cfe51d2", originalPath: "pending.jpg" });
   const excluded = applyEntry({
     rowId: "c21973a1-ae1a-41d6-9cc0-5ea62cfe51d2",
-    originalPath: EXPLICITLY_EXCLUDED_IMAGE_PATH,
+    originalPath: "legacy-skipped.jpg",
     expectedCloudinarySecureUrl: "",
     cloudinaryPublicId: "",
     expectedOptimizedSha256: "",
@@ -214,11 +209,11 @@ test("row edits after preview are conflicts and do not match apply or rollback c
   assert.equal(rowMatchesRollback(entry, rowId, "https://cloudinary.example/changed-after-apply"), false);
 });
 
-test("post-apply verification passes only with the exact run, journal, rows, and preserved exclusion", () => {
+test("post-apply verification passes only with the exact run, journal, rows, and historical skipped status", () => {
   const apply = applyEntry();
   const excluded = applyEntry({
     rowId: "c21973a1-ae1a-41d6-9cc0-5ea62cfe51d2",
-    originalPath: EXPLICITLY_EXCLUDED_IMAGE_PATH,
+    originalPath: "legacy-skipped.jpg",
     expectedOriginalUrl: "https://supabase.example/storage/v1/object/public/projects/excluded.jpg",
     expectedCloudinarySecureUrl: "",
     cloudinaryPublicId: "",

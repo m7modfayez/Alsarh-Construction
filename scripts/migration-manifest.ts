@@ -1,7 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
 
-export const EXPLICITLY_EXCLUDED_IMAGE_PATH = "1776998926472-kfpkv2m60la-1000010328.jpg";
-
 export type MigrationTable = "project_images" | "projects";
 export type ManifestEntry = {
   migrationId: string;
@@ -69,11 +67,10 @@ export function validateApplyManifest(value: unknown): ApplyManifest {
     if (seenRows.has(rowKey)) throw new Error("Manifest contains duplicate row " + rowKey);
     seenRows.add(rowKey);
     if (entry.action === "exclude") {
-      if (entry.originalPath !== EXPLICITLY_EXCLUDED_IMAGE_PATH || !entry.expectedOriginalUrl || entry.expectedOriginalUrl === entry.expectedCloudinarySecureUrl) {
-        throw new Error("Only the configured image path can be explicitly excluded");
+      if (!entry.expectedOriginalUrl || entry.expectedOriginalUrl === entry.expectedCloudinarySecureUrl) {
+        throw new Error("Excluded manifest rows must retain their original URL");
       }
     } else if (entry.action === "apply") {
-      if (entry.originalPath === EXPLICITLY_EXCLUDED_IMAGE_PATH) throw new Error("The explicitly excluded image cannot appear as an apply entry");
       if (!entry.expectedOriginalUrl || !entry.expectedCloudinarySecureUrl || !entry.cloudinaryPublicId ||
           !/^[a-f0-9]{64}$/i.test(entry.expectedSourceSha256) || !/^[a-f0-9]{64}$/i.test(entry.expectedOptimizedSha256) ||
           entry.mappingVerificationStatus !== "verified") {

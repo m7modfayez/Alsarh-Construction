@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/ResilientImage";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProjectGalleryProps } from "@/types";
 import {

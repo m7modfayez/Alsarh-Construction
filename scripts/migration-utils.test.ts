@@ -45,6 +45,13 @@ test("selects the largest supported images by descending original size", () => {
   assert.deepEqual(selectLargestSupportedImages(files, sizes, 2).map((file) => file.name), ["large.png", "medium.jpeg"]);
 });
 
+test("a missing source is omitted from largest-file selection while readable sources continue", () => {
+  const files = [{ name: "missing.jpg" }, { name: "available.jpg" }, { name: "also-available.png" }];
+  const sizes = new Map([["available.jpg", 100], ["also-available.png", 200]]);
+  assert.deepEqual(selectLargestSupportedImages(files, sizes, 2).map((file) => file.name), ["also-available.png", "available.jpg"]);
+  assert.throws(() => selectLargestSupportedImages(files, sizes, 3), /only 2 sources are readable/);
+});
+
 test("breaks largest-image size ties by ascending object path", () => {
   const files = [{ name: "z/equal.jpg" }, { name: "a/equal.png" }, { name: "m/smaller.jpg" }];
   const sizes = new Map([["z/equal.jpg", 500], ["a/equal.png", 500], ["m/smaller.jpg", 300]]);

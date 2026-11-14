@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ResilientImage";
 import { MapPin, Calendar } from "lucide-react";
 import { ProjectCardProps } from "@/types";
 

@@ -83,19 +83,14 @@ export function selectLargestSupportedImages(
   sizesByPath: ReadonlyMap<string, number>,
   count: number,
 ): ListedImage[] {
-  const supported = files.filter(supportsMigrationFormat);
-  for (const file of supported) {
-    const size = sizesByPath.get(file.name);
-    if (typeof size !== "number" || !Number.isSafeInteger(size) || size < 0) {
-      throw new Error(`Original file size is unavailable for supported image '${file.name}'`);
-    }
-  }
+  const supported = files.filter((file) => supportsMigrationFormat(file) &&
+    Number.isSafeInteger(sizesByPath.get(file.name)) && (sizesByPath.get(file.name) as number) >= 0);
   supported.sort((a, b) => {
     const sizeDifference = (sizesByPath.get(b.name) as number) - (sizesByPath.get(a.name) as number);
     return sizeDifference || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
   });
   if (supported.length < count) {
-    throw new Error(`Requested ${count} largest supported JPEG/PNG images, but only ${supported.length} were found`);
+    throw new Error(`Requested ${count} largest supported JPEG/PNG images, but only ${supported.length} sources are readable`);
   }
   return supported.slice(0, count);
 }

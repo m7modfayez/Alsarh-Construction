@@ -37,7 +37,7 @@ UPDATE public.project_images AS pi SET image_order = ordered.image_order::intege
 FROM ordered WHERE pi.id = ordered.id;
 
 -- Exact URL-to-public-ID backfill from the locally verified migration mapping.
--- 738 Cloudinary assets are represented; the excluded Supabase image is intentionally absent.
+-- Existing Cloudinary mappings are backfilled from the verified migration inventory.
 WITH migrated_images(image_url, cloudinary_public_id) AS (
   VALUES
   ('https://res.cloudinary.com/rpoookqu/image/upload/v1794390951/supabase-projects/cf683e241954fa17159cfe792465aa50d0d832b805bd588314c2119377c662bd-80362c7663e2c631d3fcd074f7e72496f8cdcdb76b26364a7ecabce884abcf71.webp', 'supabase-projects/cf683e241954fa17159cfe792465aa50d0d832b805bd588314c2119377c662bd-80362c7663e2c631d3fcd074f7e72496f8cdcdb76b26364a7ecabce884abcf71'),
@@ -1643,7 +1643,7 @@ DECLARE
   v_cleanup_item jsonb;
   v_is_create boolean;
   v_same boolean := true;
-  v_job_status text;
+  v_upload_reserved boolean;
   v_enqueued integer := 0;
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
@@ -1751,12 +1751,16 @@ BEGIN
          coalesce(v_descriptor->>'image_order', '') !~ '^[0-9]{1,2}$' THEN
         RAISE EXCEPTION 'new project image is missing valid Cloudinary metadata';
       END IF;
-      v_job_status := NULL;
-      SELECT status INTO v_job_status FROM public.cloudinary_asset_cleanup_jobs
-      WHERE cloudinary_public_id = v_descriptor->>'cloudinary_public_id' FOR UPDATE;
-      IF v_job_status = 'processing' THEN RAISE EXCEPTION 'image cleanup is in progress; retry after cleanup finishes'; END IF;
-      UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', updated_at = now(), lease_until = NULL
-      WHERE cloudinary_public_id = v_descriptor->>'cloudinary_public_id' AND status IN ('pending', 'failed', 'deleted');
+      SELECT EXISTS (
+        SELECT 1 FROM public.cloudinary_asset_upload_intents intent
+        WHERE intent.cloudinary_public_id = v_descriptor->>'cloudinary_public_id'
+          AND intent.project_id = v_project_id
+          AND intent.secure_url = v_descriptor->>'image_url'
+          AND intent.status IN ('uploaded', 'attached')
+      ) INTO v_upload_reserved;
+      IF NOT coalesce(v_upload_reserved, false) THEN
+        RAISE EXCEPTION 'new project image has no matching durable Cloudinary upload reservation';
+      END IF;
       INSERT INTO public.project_images (project_id, image_url, cloudinary_public_id, image_provider, image_order, is_cover)
       VALUES (v_project_id, v_descriptor->>'image_url', v_descriptor->>'cloudinary_public_id', 'cloudinary',
               (v_descriptor->>'image_order')::integer, coalesce((v_descriptor->>'is_cover')::boolean, false))
@@ -1932,4 +1936,266 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.cloudinary_finish_asset_cleanup(uuid, boolean, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.cloudinary_finish_asset_cleanup(uuid, boolean, text) TO service_role;
+
+-- Refresh PostgREST's schema cache so the newly installed RPC signatures are callable.
+NOTIFY pgrst, 'reload schema';
+
+-- Durable reservations make an upload discoverable even when Cloudinary stored
+-- it but the upload response or later database request was lost.
+CREATE TABLE IF NOT EXISTS public.cloudinary_asset_upload_intents (
+  cloudinary_public_id text PRIMARY KEY,
+  project_id uuid NOT NULL,
+  source_sha256 text NOT NULL CHECK (source_sha256 ~ '^[a-f0-9]{64}$'),
+  status text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved', 'uploaded', 'attached', 'cleanup_pending')),
+  secure_url text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL DEFAULT now() + interval '24 hours'
+);
+ALTER TABLE public.cloudinary_asset_upload_intents ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.cloudinary_asset_upload_intents FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cloudinary_asset_upload_intents TO service_role;
+
+CREATE OR REPLACE FUNCTION public.cloudinary_touch_project_updated_at()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+BEGIN
+  NEW.updated_at := clock_timestamp();
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS cloudinary_touch_project_updated_at ON public.projects;
+CREATE TRIGGER cloudinary_touch_project_updated_at BEFORE UPDATE ON public.projects
+FOR EACH ROW EXECUTE FUNCTION public.cloudinary_touch_project_updated_at();
+REVOKE ALL ON FUNCTION public.cloudinary_touch_project_updated_at() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_touch_project_updated_at() TO service_role;
+
+ALTER TABLE public.cloudinary_asset_cleanup_jobs
+  ADD COLUMN IF NOT EXISTS next_attempt_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS max_attempts integer NOT NULL DEFAULT 8 CHECK (max_attempts BETWEEN 1 AND 20);
+ALTER TABLE public.cloudinary_asset_cleanup_jobs DROP CONSTRAINT IF EXISTS cloudinary_asset_cleanup_jobs_status_check;
+ALTER TABLE public.cloudinary_asset_cleanup_jobs ADD CONSTRAINT cloudinary_asset_cleanup_jobs_status_check
+  CHECK (status IN ('pending', 'processing', 'failed', 'deleted', 'cancelled', 'dead'));
+
+CREATE OR REPLACE FUNCTION public.cloudinary_reserve_asset_upload(
+  p_project_id uuid, p_source_sha256 text, p_public_id text
+) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_cleanup_status text;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' OR p_project_id IS NULL OR
+     p_source_sha256 !~ '^[a-f0-9]{64}$' OR
+     p_public_id <> 'projects/' || p_project_id::text || '/' || p_source_sha256 THEN
+    RAISE EXCEPTION 'invalid upload reservation';
+  END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_public_id, 0));
+  SELECT status INTO v_cleanup_status FROM public.cloudinary_asset_cleanup_jobs
+    WHERE cloudinary_public_id = p_public_id FOR UPDATE;
+  IF v_cleanup_status = 'processing' THEN RAISE EXCEPTION 'asset cleanup is in progress; retry upload later'; END IF;
+  UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', lease_until = NULL,
+    updated_at = now(), last_error = 'new upload reservation created'
+   WHERE cloudinary_public_id = p_public_id AND status IN ('pending', 'failed', 'dead', 'deleted');
+  INSERT INTO public.cloudinary_asset_upload_intents(cloudinary_public_id, project_id, source_sha256)
+  VALUES (p_public_id, p_project_id, p_source_sha256)
+  ON CONFLICT (cloudinary_public_id) DO UPDATE
+    SET updated_at = now(), expires_at = now() + interval '24 hours'
+    WHERE public.cloudinary_asset_upload_intents.project_id = EXCLUDED.project_id
+      AND public.cloudinary_asset_upload_intents.source_sha256 = EXCLUDED.source_sha256;
+  IF NOT FOUND THEN RAISE EXCEPTION 'upload identity conflicts with an existing intent'; END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_reserve_asset_upload(uuid, text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_reserve_asset_upload(uuid, text, text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.cloudinary_record_asset_upload(p_public_id text, p_secure_url text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' OR p_public_id !~ '^projects/[0-9a-f-]{36}/[a-f0-9]{64}$' OR
+     p_secure_url !~ '^https://res\.cloudinary\.com/' THEN RAISE EXCEPTION 'invalid upload result'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_public_id, 0));
+  UPDATE public.cloudinary_asset_upload_intents SET status = 'uploaded', secure_url = p_secure_url,
+    updated_at = now(), expires_at = now() + interval '24 hours'
+   WHERE cloudinary_public_id = p_public_id AND status <> 'attached';
+  IF NOT FOUND AND NOT EXISTS (SELECT 1 FROM public.cloudinary_asset_upload_intents
+    WHERE cloudinary_public_id = p_public_id AND status = 'attached') THEN
+    RAISE EXCEPTION 'upload reservation does not exist';
+  END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_record_asset_upload(text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_record_asset_upload(text, text) TO service_role;
+
+-- The same transaction advisory lock serializes attach, queue, claim, and
+-- reference checks. A claimed job is a fence: attachments wait, then reject
+-- while it is processing. Attachments that win first commit before claim checks.
+CREATE OR REPLACE FUNCTION public.cloudinary_guard_asset_attachment()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_public_id text; v_status text;
+BEGIN
+  IF TG_TABLE_NAME = 'project_images' THEN
+    v_public_id := NEW.cloudinary_public_id;
+  ELSE
+    v_public_id := NEW.cover_image_public_id;
+  END IF;
+  IF v_public_id IS NULL THEN RETURN NEW; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_public_id, 0));
+  SELECT status INTO v_status FROM public.cloudinary_asset_cleanup_jobs WHERE cloudinary_public_id = v_public_id FOR UPDATE;
+  IF v_status = 'processing' THEN RAISE EXCEPTION 'asset cleanup is in progress; retry the project save'; END IF;
+  UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', lease_until = NULL,
+    updated_at = now(), last_error = 'asset became referenced'
+   WHERE cloudinary_public_id = v_public_id AND status IN ('pending', 'failed', 'dead');
+  UPDATE public.cloudinary_asset_upload_intents SET status = 'attached', updated_at = now()
+   WHERE cloudinary_public_id = v_public_id;
+  RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_guard_asset_attachment() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_guard_asset_attachment() TO service_role;
+DROP TRIGGER IF EXISTS cloudinary_guard_project_image_attachment ON public.project_images;
+CREATE TRIGGER cloudinary_guard_project_image_attachment BEFORE INSERT OR UPDATE OF cloudinary_public_id
+  ON public.project_images FOR EACH ROW EXECUTE FUNCTION public.cloudinary_guard_asset_attachment();
+DROP TRIGGER IF EXISTS cloudinary_guard_project_cover_attachment ON public.projects;
+CREATE TRIGGER cloudinary_guard_project_cover_attachment BEFORE INSERT OR UPDATE OF cover_image_public_id
+  ON public.projects FOR EACH ROW EXECUTE FUNCTION public.cloudinary_guard_asset_attachment();
+
+CREATE OR REPLACE FUNCTION public.cloudinary_queue_cleanup_if_unreferenced(p_cloudinary_public_id text, p_secure_url text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_rows integer;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' OR p_cloudinary_public_id IS NULL OR p_cloudinary_public_id = '' OR
+     p_secure_url IS NULL OR p_secure_url = '' THEN RETURN false; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_cloudinary_public_id, 0));
+  IF EXISTS (SELECT 1 FROM public.project_images WHERE cloudinary_public_id = p_cloudinary_public_id) OR
+     EXISTS (SELECT 1 FROM public.projects WHERE cover_image_public_id = p_cloudinary_public_id) THEN RETURN false; END IF;
+  INSERT INTO public.cloudinary_asset_cleanup_jobs(cloudinary_public_id, secure_url, status, attempts, last_error, lease_until, next_attempt_at)
+  VALUES (p_cloudinary_public_id, p_secure_url, 'pending', 0, NULL, NULL, now())
+  ON CONFLICT (cloudinary_public_id) DO UPDATE SET secure_url = EXCLUDED.secure_url, status = 'pending',
+    attempts = 0, last_error = NULL, updated_at = now(), lease_until = NULL, next_attempt_at = now()
+  WHERE public.cloudinary_asset_cleanup_jobs.status IN ('pending', 'failed', 'deleted', 'cancelled');
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  IF v_rows > 0 THEN UPDATE public.cloudinary_asset_upload_intents SET status = 'cleanup_pending', updated_at = now()
+    WHERE cloudinary_public_id = p_cloudinary_public_id AND status <> 'attached'; END IF;
+  RETURN v_rows > 0;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_queue_cleanup_if_unreferenced(text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_queue_cleanup_if_unreferenced(text, text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.cloudinary_claim_asset_cleanup_jobs(p_limit integer DEFAULT 20)
+RETURNS SETOF public.cloudinary_asset_cleanup_jobs
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_job public.cloudinary_asset_cleanup_jobs%ROWTYPE;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'server service role required'; END IF;
+  IF p_limit < 1 OR p_limit > 50 THEN RAISE EXCEPTION 'cleanup limit must be between 1 and 50'; END IF;
+  UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'dead', updated_at = now(), lease_until = NULL,
+    last_error = coalesce(last_error, 'maximum cleanup attempts reached')
+   WHERE attempts >= max_attempts AND (status IN ('pending', 'failed') OR (status = 'processing' AND lease_until < now()));
+  FOR v_job IN SELECT * FROM public.cloudinary_asset_cleanup_jobs
+    WHERE attempts < max_attempts AND next_attempt_at <= now() AND
+      (status IN ('pending', 'failed') OR (status = 'processing' AND lease_until < now()))
+    ORDER BY next_attempt_at, created_at LIMIT p_limit
+  LOOP
+    PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_job.cloudinary_public_id, 0));
+    SELECT * INTO v_job FROM public.cloudinary_asset_cleanup_jobs
+      WHERE id = v_job.id AND attempts < max_attempts AND next_attempt_at <= now() AND
+        (status IN ('pending', 'failed') OR (status = 'processing' AND lease_until < now()))
+      FOR UPDATE SKIP LOCKED;
+    IF NOT FOUND THEN CONTINUE; END IF;
+    IF EXISTS (SELECT 1 FROM public.project_images WHERE cloudinary_public_id = v_job.cloudinary_public_id) OR
+       EXISTS (SELECT 1 FROM public.projects WHERE cover_image_public_id = v_job.cloudinary_public_id) THEN
+      UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', updated_at = now(), lease_until = NULL,
+        last_error = 'asset is still referenced by a project' WHERE id = v_job.id;
+      CONTINUE;
+    END IF;
+    UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'processing', attempts = attempts + 1,
+      updated_at = now(), lease_until = now() + interval '5 minutes' WHERE id = v_job.id RETURNING * INTO v_job;
+    RETURN NEXT v_job;
+  END LOOP;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_claim_asset_cleanup_jobs(integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_claim_asset_cleanup_jobs(integer) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.cloudinary_finish_asset_cleanup(p_job_id uuid, p_success boolean, p_error text DEFAULT NULL)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_job public.cloudinary_asset_cleanup_jobs%ROWTYPE;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'server service role required'; END IF;
+  SELECT * INTO v_job FROM public.cloudinary_asset_cleanup_jobs WHERE id = p_job_id AND status = 'processing';
+  IF NOT FOUND THEN RAISE EXCEPTION 'cleanup job is not claimed'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_job.cloudinary_public_id, 0));
+  SELECT * INTO v_job FROM public.cloudinary_asset_cleanup_jobs WHERE id = p_job_id AND status = 'processing' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'cleanup lease is no longer active'; END IF;
+  IF EXISTS (SELECT 1 FROM public.project_images WHERE cloudinary_public_id = v_job.cloudinary_public_id) OR
+     EXISTS (SELECT 1 FROM public.projects WHERE cover_image_public_id = v_job.cloudinary_public_id) THEN
+    UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', last_error = 'asset became referenced before cleanup completion',
+      updated_at = now(), lease_until = NULL WHERE id = p_job_id;
+    RETURN;
+  END IF;
+  UPDATE public.cloudinary_asset_cleanup_jobs SET
+    status = CASE WHEN p_success THEN 'deleted' WHEN attempts >= max_attempts THEN 'dead' ELSE 'failed' END,
+    last_error = CASE WHEN p_success THEN NULL ELSE left(coalesce(p_error, 'Cloudinary deletion failed'), 1000) END,
+    next_attempt_at = CASE WHEN p_success THEN now() ELSE now() + make_interval(secs => least(3600, 30 * (2 ^ greatest(0, attempts - 1))::integer)) END,
+    updated_at = now(), lease_until = NULL WHERE id = p_job_id;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_finish_asset_cleanup(uuid, boolean, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_finish_asset_cleanup(uuid, boolean, text) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.cloudinary_requeue_dead_cleanup_jobs(p_limit integer DEFAULT 20)
+RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, auth AS $$
+DECLARE v_candidate record; v_job public.cloudinary_asset_cleanup_jobs%ROWTYPE; v_requeued integer := 0;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'server service role required'; END IF;
+  IF p_limit < 1 OR p_limit > 50 THEN RAISE EXCEPTION 'cleanup limit must be between 1 and 50'; END IF;
+  FOR v_candidate IN SELECT id, cloudinary_public_id FROM public.cloudinary_asset_cleanup_jobs
+    WHERE status = 'dead' ORDER BY updated_at LIMIT p_limit
+  LOOP
+    PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_candidate.cloudinary_public_id, 0));
+    SELECT * INTO v_job FROM public.cloudinary_asset_cleanup_jobs WHERE id = v_candidate.id AND status = 'dead' FOR UPDATE SKIP LOCKED;
+    IF NOT FOUND THEN CONTINUE; END IF;
+    IF EXISTS (SELECT 1 FROM public.project_images WHERE cloudinary_public_id = v_job.cloudinary_public_id) OR
+       EXISTS (SELECT 1 FROM public.projects WHERE cover_image_public_id = v_job.cloudinary_public_id) THEN
+      UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'cancelled', updated_at = now(), lease_until = NULL,
+        last_error = 'asset is still referenced by a project' WHERE id = v_job.id;
+    ELSE
+      UPDATE public.cloudinary_asset_cleanup_jobs SET status = 'pending', attempts = 0, next_attempt_at = now(),
+        updated_at = now(), lease_until = NULL, last_error = NULL WHERE id = v_job.id;
+      v_requeued := v_requeued + 1;
+    END IF;
+  END LOOP;
+  RETURN v_requeued;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.cloudinary_requeue_dead_cleanup_jobs(integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cloudinary_requeue_dead_cleanup_jobs(integer) TO service_role;
+
+DO $$
+DECLARE fn record;
+BEGIN
+  IF has_table_privilege('anon', 'public.cloudinary_asset_cleanup_jobs', 'SELECT') OR
+     has_table_privilege('authenticated', 'public.cloudinary_asset_cleanup_jobs', 'SELECT') OR
+     has_table_privilege('anon', 'public.cloudinary_asset_upload_intents', 'SELECT') OR
+     has_table_privilege('authenticated', 'public.cloudinary_asset_upload_intents', 'SELECT') OR
+     NOT has_table_privilege('service_role', 'public.cloudinary_asset_cleanup_jobs', 'SELECT') OR
+     NOT has_table_privilege('service_role', 'public.cloudinary_asset_cleanup_jobs', 'UPDATE') OR
+     NOT has_table_privilege('service_role', 'public.cloudinary_asset_upload_intents', 'SELECT') OR
+     NOT has_table_privilege('service_role', 'public.cloudinary_asset_upload_intents', 'INSERT') OR
+     NOT has_table_privilege('service_role', 'public.cloudinary_asset_upload_intents', 'UPDATE') THEN
+    RAISE EXCEPTION 'Cloudinary queue/reservation table grants are not service-role-only';
+  END IF;
+  FOR fn IN SELECT p.oid::regprocedure AS signature FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname LIKE 'cloudinary_%'
+  LOOP
+    IF has_function_privilege('anon', fn.signature, 'EXECUTE') OR
+       has_function_privilege('authenticated', fn.signature, 'EXECUTE') OR
+       NOT has_function_privilege('service_role', fn.signature, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Cloudinary lifecycle function grants are not restricted: %', fn.signature;
+    END IF;
+  END LOOP;
+END;
+$$;
+
+NOTIFY pgrst, 'reload schema';
 

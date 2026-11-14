@@ -1,183 +1,34 @@
-# Projects CRUD Dashboard
+# Dashboard and project image operations
 
-A complete Next.js dashboard for managing construction projects with Supabase backend integration.
+## Architecture
 
-## Features
+The dashboard and `/api/admin/*` routes require a valid Supabase Auth session. Admin API handlers verify the session on the server before creating a Service Role client. Public signup should remain disabled; every authenticated account can access the dashboard.
 
-### 🏗️ **Core Functionality**
-- **Create Projects**: Add new construction projects with details and multiple images
-- **Read Projects**: View all projects in a clean card-based layout
-- **Update Projects**: Edit existing projects and manage images
-- **Delete Projects**: Remove projects with automatic image cleanup
+Project data and image records are stored in Supabase Database. Project images are uploaded on the server to Cloudinary; the resulting secure URLs and returned public IDs are saved with the ordered gallery records and the cover fields. Browser code does not upload to Cloudinary or write project records.
 
-### 📸 **Image Management**
-- **Multiple Upload**: Upload multiple images at once
-- **Cover Image**: Select one image as the project cover
-- **Storage Integration**: Images stored in Supabase Storage
-- **Automatic Cleanup**: Images deleted from storage when project is deleted
+Image uploads accept JPEG, PNG, WebP, and AVIF input. Sharp validates the image contents, converts them to WebP, and Cloudinary stores them with unique IDs under `projects/{project UUID}/`. Retained images are not re-uploaded. Editing does not delete removed Cloudinary files. Deleting a project removes its Database records first, then attempts to delete unique Cloudinary assets that are no longer referenced.
 
-### 🎨 **UI/UX Features**
-- **RTL Support**: Full Arabic RTL layout support
-- **Responsive Design**: Works perfectly on mobile and desktop
-- **Loading States**: Professional loading indicators
-- **Error Handling**: Graceful error messages and recovery
-- **Modern UI**: Clean, minimal design with Tailwind CSS
+## Required environment variables
 
-## Setup Instructions
-
-### 1. Supabase Setup
-
-1. **Create a new Supabase project** at [supabase.com](https://supabase.com)
-
-2. **Run the database schema**:
-   - Open your Supabase project
-   - Go to the SQL Editor
-   - Copy and paste the contents of `supabase-schema.sql`
-   - Run the SQL commands
-
-3. **Get your credentials**:
-   - Go to Project Settings → API
-   - Copy the Project URL and Anon Key
-
-### 2. Environment Setup
-
-1. **Create environment file**:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-2. **Update environment variables**:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-### 3. Install Dependencies
-
-```bash
-pnpm install
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
 
-### 4. Run the Application
+The Service Role key and Cloudinary API key/secret must remain server-only.
 
-```bash
-pnpm dev
-```
+## Database and legacy images
 
-Visit `http://localhost:3000/dashboard` to access the dashboard.
+Migration 11, `202611110001_cloudinary_image_migration_journal.sql`, is historical; do not rewrite or remove it or its records.
 
-## Dashboard Structure
+The pending migration `202611120001_cloudinary_project_image_lifecycle.sql` has not been applied and still contains legacy cleanup and lifecycle SQL. Do not apply it as-is. It must be reviewed separately before applying schema changes. No migrations or production data were changed as part of the project image workflow.
 
-```
-/dashboard
-├── layout.tsx          # Dashboard layout with sidebar
-├── page.tsx           # Projects listing page
-├── add/
-│   └── page.tsx       # Add new project page
-└── edit/
-    └── [id]/
-        └── page.tsx   # Edit existing project page
-```
+Existing project URLs may still reference Supabase Storage. Keep their public read access and image host configuration until references are verified; new project image uploads and deletions do not use Supabase Storage.
 
-## Database Schema
+## Verification
 
-### Projects Table
-- `id`: UUID (Primary Key)
-- `title`: Project title (Required)
-- `description`: Project description (Optional)
-- `location`: Project location (Required)
-- `year`: Project year (Required)
-- `cover_image`: URL of cover image
-- `created_at`: Creation timestamp
-- `updated_at`: Last update timestamp
-
-### Project Images Table
-- `id`: UUID (Primary Key)
-- `project_id`: Reference to projects table
-- `image_url`: URL of uploaded image
-- `is_cover`: Boolean indicating if this is the cover image
-- `created_at`: Creation timestamp
-
-## Features Breakdown
-
-### 📱 **Mobile Responsive**
-- Collapsible sidebar on mobile
-- Touch-friendly buttons and interactions
-- Optimized image display on small screens
-
-### 🔄 **CRUD Operations**
-- **Create**: Form validation, image upload, cover selection
-- **Read**: Card layout with cover images, quick actions
-- **Update**: Load existing data, manage images, change cover
-- **Delete**: Confirmation dialog, complete cleanup
-
-### 🖼️ **Image Management**
-- **Upload**: Multiple file selection, progress indication
-- **Preview**: Image thumbnails with hover effects
-- **Cover Selection**: Visual indication of cover image
-- **Storage**: Automatic Supabase Storage integration
-
-### 🎯 **User Experience**
-- **Loading States**: Professional spinners and disabled states
-- **Error Handling**: Clear error messages with retry options
-- **Navigation**: Breadcrumbs and back navigation
-- **Feedback**: Success confirmations and action feedback
-
-## Security Notes
-
-The current setup uses permissive RLS policies for demo purposes. In production:
-
-1. **Restrict RLS policies** to authenticated users only
-2. **Add authentication** with Supabase Auth
-3. **Implement file size limits** for uploads
-4. **Add input validation** and sanitization
-5. **Use environment variables** for sensitive data
-
-## Customization
-
-### Styling
-- Uses Tailwind CSS for styling
-- RTL support with `dir="rtl"` and `rtl` class
-- Custom colors and spacing can be adjusted in Tailwind config
-
-### Database
-- Modify `supabase-schema.sql` to add custom fields
-- Update TypeScript interfaces in component files
-- Adjust form validation as needed
-
-### Storage
-- Default bucket name: `projects`
-- Can be configured in the schema file
-- File naming includes timestamp for uniqueness
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Images not uploading**: Check Supabase Storage permissions
-2. **Database errors**: Verify schema was applied correctly
-3. **Environment variables**: Ensure `.env.local` is properly configured
-4. **CORS issues**: Check Supabase CORS settings
-
-### Debug Mode
-
-Add console logging to debug:
-```javascript
-console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-console.log('Project ID:', projectId)
-```
-
-## Production Deployment
-
-1. **Environment Variables**: Set all required env vars in your hosting platform
-2. **Database**: Ensure Supabase is in production mode
-3. **Authentication**: Implement proper user authentication
-4. **Domain**: Configure your custom domain in Supabase settings
-5. **Monitoring**: Set up error tracking and monitoring
-
-## Support
-
-For issues related to:
-- **Supabase**: Check [Supabase Documentation](https://supabase.com/docs)
-- **Next.js**: Check [Next.js Documentation](https://nextjs.org/docs)
-- **Tailwind CSS**: Check [Tailwind Documentation](https://tailwindcss.com/docs)
+Automated local checks cover unit/static behavior only. Real Supabase and Cloudinary create/edit/delete workflows have not been run. Verify those flows with disposable credentials before staging or production use. Production migrations, deployments, and asset deletions have not been performed.

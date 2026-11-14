@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ResilientImage";
 import { Upload, X, ArrowLeft, Save, ArrowUp, ArrowDown } from "lucide-react";
+import { ALLOWED_IMAGE_MIME_TYPES } from "@/lib/project-image-validation";
+import { runWithPendingState } from "@/lib/project-image-pending";
 import { supabase } from "@/lib/supabaseClient";
 
 interface ProjectImage {
@@ -122,9 +124,9 @@ export default function EditProjectPage() {
     if (files.length === 0) return;
 
     setError(null);
-    const unsupported = files.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    const unsupported = files.find((file) => !ALLOWED_IMAGE_MIME_TYPES.has(file.type));
     const tooLarge = files.find((file) => file.size === 0 || file.size > 10 * 1024 * 1024);
-    if (unsupported) setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP.");
+    if (unsupported) setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP أو AVIF.");
     else if (tooLarge) setError("يجب ألا يتجاوز حجم الصورة الواحدة 10 ميجابايت.");
     else if (images.length + files.length > 20 ||
       images.reduce((sum, image) => sum + (image.kind === "new" ? image.file.size : 0), 0) + files.reduce((sum, file) => sum + file.size, 0) > 30 * 1024 * 1024) {
@@ -183,49 +185,57 @@ export default function EditProjectPage() {
       return;
     }
 
-    setLoading(true);
     submittingRef.current = true;
     setError(null);
 
     try {
-      if (!project) throw new Error("تعذر تحميل بيانات المشروع");
-      const formData = new FormData();
-      formData.set("projectId", projectId);
-      formData.set("expectedUpdatedAt", project.updated_at);
-      formData.set("project", JSON.stringify({
-        title: title.trim(),
-        description: description.trim(),
-        location: location.trim(),
-        year: parseInt(year),
-        is_featured: isFeatured,
-        scope_of_work: scopeOfWork.trim()
-          ? scopeOfWork
-              .trim()
-              .split(/[\+,\u2022]/)
-              .map((item) => item.trim())
-              .filter((item) => item.length > 0)
-          : [],
-      }));
-      const files: File[] = [];
-      const descriptors = images.map((image, index) => {
-        if (image.kind === "existing") {
-          return { id: image.id, is_cover: image.isCover, image_order: index };
-        }
-        const fileIndex = files.length;
-        files.push(image.file);
-        return { fileIndex, is_cover: image.isCover, image_order: index };
-      });
-      formData.set("images", JSON.stringify(descriptors));
-      files.forEach((file) => formData.append("files", file, file.name));
-      const response = await fetch(`/api/admin/projects/${projectId}`, { method: "PUT", body: formData });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "فشل في تحديث المشروع");
+      const result = await runWithPendingState(async () => {
+        if (!project) throw new Error("تعذر تحميل بيانات المشروع");
+        const formData = new FormData();
+        formData.set("projectId", projectId);
+        formData.set("expectedUpdatedAt", project.updated_at);
+        formData.set("project", JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          location: location.trim(),
+          year: parseInt(year),
+          is_featured: isFeatured,
+          scope_of_work: scopeOfWork.trim()
+            ? scopeOfWork
+                .trim()
+                .split(/[\+,\u2022]/)
+                .map((item) => item.trim())
+                .filter((item) => item.length > 0)
+            : [],
+        }));
+        const files: File[] = [];
+        const descriptors = images.map((image, index) => {
+          if (image.kind === "existing") {
+            return { id: image.id, is_cover: image.isCover, image_order: index };
+          }
+          const fileIndex = files.length;
+          files.push(image.file);
+          return { fileIndex, is_cover: image.isCover, image_order: index };
+        });
+        formData.set("images", JSON.stringify(descriptors));
+        files.forEach((file) => formData.append("files", file, file.name));
+        const response = await fetch(`/api/admin/projects/${projectId}`, { method: "PUT", body: formData });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "فشل في تحديث المشروع");
+        return result;
+      }, setLoading);
+      if (result.cloudinaryDeletion?.failed) {
+        const failures = Array.isArray(result.cloudinaryDeletion.failures)
+          ? result.cloudinaryDeletion.failures.join("؛ ")
+          : "";
+        setError(`تم تحديث المشروع، لكن تعذر تأكيد حذف بعض الصور المُزالة من Cloudinary. أعد تحميل الصفحة قبل إجراء تعديلات أخرى.${failures ? ` ${failures}` : ""}`);
+        return;
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل في تحديث المشروع");
     } finally {
       submittingRef.current = false;
-      setLoading(false);
     }
   };
 
@@ -374,7 +384,7 @@ export default function EditProjectPage() {
               <input
                 type="file"
                 multiple
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/avif"
                 onChange={handleImageUpload}
                 className="hidden"
                 disabled={loading}

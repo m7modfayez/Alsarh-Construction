@@ -5,7 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 import sharp from "sharp";
 import { animatedImageReason, cloudinaryApiError, cloudinaryDeliveryUrlMismatch, cloudinaryUploadContext, deterministicPublicId, matchesOptimizedContent, selectLargestSupportedImages, selectSupportedImages, sha256, supportsMigrationFormat, type ListedImage, unsupportedFormatReason, validateSelectionOptions } from "./migration-utils";
-import { assertManifestMatchesMapping, countManifestActions, createApplyManifest, executeApplyPass, executeRollbackPass, EXPLICITLY_EXCLUDED_IMAGE_PATH, makeMigrationId, validateApplyManifest, verifyPostApplyState, type ApplyManifest, type JournalOperationState, type ManifestEntry, type VerifyJournalRecord, type VerifyJournalStatus } from "./migration-manifest";
+import { assertManifestMatchesMapping, countManifestActions, createApplyManifest, executeApplyPass, executeRollbackPass, makeMigrationId, validateApplyManifest, verifyPostApplyState, type ApplyManifest, type JournalOperationState, type ManifestEntry, type VerifyJournalRecord, type VerifyJournalStatus } from "./migration-manifest";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -194,7 +194,7 @@ async function getDatabaseUrlInventory(): Promise<Set<string>> {
   return urls;
 }
 
-async function validateStorageAndUrlConsistency(objects: StorageFile[], probeObject: StorageFile): Promise<{ urlToPath: Map<string, string>; probeImage: Buffer }> {
+async function validateStorageAndUrlConsistency(objects: StorageFile[]): Promise<{ urlToPath: Map<string, string> }> {
   const listedUrlToPath = new Map(objects.map((object) => [getPublicUrl(object.name), object.name]));
   const inventory = await getDatabaseUrlInventory();
   const urlToPath = new Map<string, string>();
@@ -203,16 +203,12 @@ async function validateStorageAndUrlConsistency(objects: StorageFile[], probeObj
     if (pathForUrl) {
       urlToPath.set(url, pathForUrl);
     } else if (isProjectsBucketUrl(url)) {
-      throw new Error(`Database contains a projects-bucket URL that does not exactly match a listed object's generated public URL: ${url}`);
+      // A stale database URL may point to an object that has already been
+      // removed. Leave it unmatched so preview reports it; do not stop uploads
+      // for unrelated, available sources.
     }
   }
-
-  const { data, error } = await supabase.storage.from(BUCKET).download(probeObject.name);
-  if (error || !data) throw new Error(`Supabase bucket download check failed: ${error?.message ?? "empty response"}`);
-  if (!(await urlIsAccessible(getPublicUrl(probeObject.name)))) {
-    throw new Error("Supabase projects bucket public URL check failed; generated URL is not accessible");
-  }
-  return { urlToPath, probeImage: Buffer.from(await data.arrayBuffer()) };
+  return { urlToPath };
 }
 
 async function listObjects(): Promise<StorageFile[]> {
@@ -237,17 +233,6 @@ async function listObjects(): Promise<StorageFile[]> {
   }
   await walk("");
   return objects;
-}
-
-async function urlIsAccessible(url: string): Promise<boolean> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const response = await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(20_000) });
-      if (response.ok) return true;
-    } catch { /* retry transient network errors */ }
-    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-  }
-  return false;
 }
 
 async function cloudinaryContentMatches(secureUrl: string, optimizedSha256: string): Promise<{ valid: boolean; reason?: string }> {
@@ -486,8 +471,12 @@ async function upload(limit?: number, largest?: number): Promise<void> {
     const supported = objects.filter(supportsMigrationFormat);
     const sizesByPath = new Map<string, number>();
     await runPool(supported, CONCURRENCY, async (object) => {
-      const size = listedOriginalSize(object) ?? await downloadOriginalSize(object);
-      sizesByPath.set(object.name, size);
+      try {
+        const size = listedOriginalSize(object) ?? await downloadOriginalSize(object);
+        sizesByPath.set(object.name, size);
+      } catch (error) {
+        console.warn(`Could not size source ${object.name}; skipping it: ${error instanceof Error ? error.message : "download failed"}`);
+      }
     });
     selected = selectLargestSupportedImages(objects, sizesByPath, largest);
     selection = {
@@ -512,8 +501,7 @@ async function upload(limit?: number, largest?: number): Promise<void> {
       selected: selected.map((object) => ({ originalPath: object.name, originalFileSize: listedOriginalSize(object) ?? null })),
     };
   }
-  const probeObject = selectSupportedImages(objects, 1)[0];
-  const validatedStorage = await validateStorageAndUrlConsistency(objects, probeObject);
+  const validatedStorage = await validateStorageAndUrlConsistency(objects);
   const actualDatabaseUrls = validatedStorage.urlToPath;
   const mapping = await loadMapping();
   mapping.selection = selection;
@@ -553,7 +541,7 @@ async function upload(limit?: number, largest?: number): Promise<void> {
       console.log(`skipped: ${object.name} — ${reason}`);
       return;
     }
-    const entry = await processObject(object, mapping, actualDatabaseUrls, object.name === probeObject.name ? validatedStorage.probeImage : undefined);
+    const entry = await processObject(object, mapping, actualDatabaseUrls);
     upsertMappingEntry(mapping, entry);
     await persist();
     console.log(`${entry.uploadStatus}/${entry.verificationStatus}: ${object.name}${entry.error ? ` — ${entry.error}` : ""}`);
@@ -690,37 +678,15 @@ async function buildManifestEntries(migrationId: string): Promise<ManifestEntry[
   const entries: ManifestEntry[] = [];
   const missing: string[] = [];
   const invalid: string[] = [];
-  const excludedUrl = getPublicUrl(EXPLICITLY_EXCLUDED_IMAGE_PATH);
-
   for (const row of databaseRows) {
     if (!isProjectsBucketUrl(row.url)) continue;
-    const skip = row.url === excludedUrl && mapping.entries.some((entry) =>
-      entry.originalPath === EXPLICITLY_EXCLUDED_IMAGE_PATH && entry.originalUrl === excludedUrl &&
-      entry.databaseUrls?.includes(excludedUrl)
-    );
-    if (skip) {
-      const failedEntry = mapping.entries.find((entry) => entry.originalPath === EXPLICITLY_EXCLUDED_IMAGE_PATH && entry.originalUrl === excludedUrl);
-      if (!failedEntry) {
-        missing.push(row.url);
-        continue;
-      }
-      entries.push({
-        migrationId, tableName: row.tableName, primaryKeyColumn: row.primaryKeyColumn, rowId: row.rowId,
-        urlColumn: row.urlColumn, expectedOriginalUrl: row.url, expectedCloudinarySecureUrl: "",
-        originalPath: EXPLICITLY_EXCLUDED_IMAGE_PATH, cloudinaryPublicId: "",
-        expectedSourceSha256: failedEntry.sourceSha256 ?? "", expectedOptimizedSha256: "",
-        mappingVerificationStatus: "not_applicable", action: "exclude",
-      });
-      continue;
-    }
-
     const match = mapping.entries.filter((entry) =>
       entry.originalUrl === row.url && entry.originalUrl === getPublicUrl(entry.originalPath) &&
       entry.databaseUrls?.includes(row.url) && ["uploaded", "existing"].includes(entry.uploadStatus) &&
       entry.verificationStatus === "verified" && entry.sourceSha256 && entry.optimizedSha256
     ).at(-1);
     if (!match) {
-      missing.push(row.url);
+      missing.push(`${row.tableName}.${row.rowId}: ${row.url}`);
       continue;
     }
     const mismatch = cloudinaryDeliveryUrlMismatch(match.cloudinarySecureUrl, required("CLOUDINARY_CLOUD_NAME"), match.cloudinaryPublicId);
@@ -737,7 +703,8 @@ async function buildManifestEntries(migrationId: string): Promise<ManifestEntry[
     });
   }
   if (missing.length || invalid.length) {
-    throw new Error("Manifest preview refused: " + missing.length + " unexpected missing mapping(s), " + invalid.length + " invalid Cloudinary URL(s).");
+    const missingDetails = missing.slice(0, 20).join("; ");
+    throw new Error("Manifest preview refused: " + missing.length + " missing source mapping(s), " + invalid.length + " invalid Cloudinary URL(s). Missing references: " + missingDetails);
   }
   return entries;
 }
@@ -783,10 +750,9 @@ async function previewDatabase(): Promise<void> {
   }
   const counts = countManifestActions(manifest);
   const distinctSources = new Set(manifest.entries.filter((entry) => entry.action === "apply").map((entry) => entry.expectedOriginalUrl)).size;
-  console.log("Read-only database preview: " + counts.apply + " exact rows eligible across " + distinctSources + " source URLs; " + counts.excluded + " row(s) explicitly excluded.");
+  console.log("Read-only database preview: " + counts.apply + " exact rows eligible across " + distinctSources + " source URLs.");
   console.log("Unexpected missing mappings: 0. Invalid Cloudinary URLs: 0. Rollback metadata: complete for every apply row.");
   console.log("Targets: project_images.image_url, projects.cover_image.");
-  console.log("Explicitly excluded path remains unchanged: " + EXPLICITLY_EXCLUDED_IMAGE_PATH + ".");
   console.log("Manifest: " + MANIFEST_FILE + "\nMigration ID: " + manifest.migrationId + "\nManifest SHA-256: " + manifest.checksum);
 }
 
@@ -810,10 +776,6 @@ async function requirePinnedManifest(expectedChecksum: string | undefined, valid
         cloudinaryDeliveryUrlMismatch(entry.expectedCloudinarySecureUrl, required("CLOUDINARY_CLOUD_NAME"), entry.cloudinaryPublicId)
       )) throw new Error("Manifest source or Cloudinary URL does not match its expected mapping for " + entry.originalPath);
     }
-  }
-  const excluded = manifest.entries.filter((entry) => entry.action === "exclude");
-  if (excluded.some((entry) => entry.originalPath !== EXPLICITLY_EXCLUDED_IMAGE_PATH || entry.expectedOriginalUrl !== getPublicUrl(EXPLICITLY_EXCLUDED_IMAGE_PATH))) {
-    throw new Error("Manifest violates the explicit image exclusion");
   }
   return manifest;
 }
@@ -928,6 +890,11 @@ async function verifyDatabase(expectedChecksum?: string): Promise<void> {
 async function applyDatabase(expectedChecksum?: string): Promise<void> {
   required("SUPABASE_SERVICE_ROLE_KEY");
   const manifest = await requirePinnedManifest(expectedChecksum);
+  const legacySkipped = manifest.entries.filter((entry) => entry.action === "exclude");
+  if (legacySkipped.length) {
+    const details = legacySkipped.map((entry) => `${entry.tableName}.${entry.urlColumn} row ${entry.rowId}: ${entry.expectedOriginalUrl}`).join("; ");
+    throw new Error(`Apply refused: the pinned historical manifest contains ${legacySkipped.length} skipped source reference(s). Do not recreate the deleted source. Resolve each current database reference through an approved data change, then create a new manifest. ${details}`);
+  }
   await rpcJournal("cloudinary_image_migration_register_manifest", {
     p_migration_id: manifest.migrationId,
     p_manifest_checksum: manifest.checksum,

@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/ResilientImage";
 import { Upload, X, ArrowLeft, Save, ArrowUp, ArrowDown } from "lucide-react";
+import { ALLOWED_IMAGE_MIME_TYPES } from "@/lib/project-image-validation";
 
 interface UploadedImage {
   file: File;
@@ -33,9 +34,9 @@ export default function AddProjectPage() {
     if (files.length === 0) return;
 
     setError(null);
-    const unsupported = files.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    const unsupported = files.find((file) => !ALLOWED_IMAGE_MIME_TYPES.has(file.type));
     if (unsupported) {
-      setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP.");
+      setError("نوع الصورة غير مدعوم. استخدم JPEG أو PNG أو WebP أو AVIF.");
       e.target.value = "";
       return;
     }
@@ -271,7 +272,7 @@ export default function AddProjectPage() {
               <input
                 type="file"
                 multiple
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/avif"
                 onChange={handleImageUpload}
                 className="hidden"
                 disabled={loading}
